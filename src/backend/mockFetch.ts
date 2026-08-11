@@ -73,10 +73,16 @@ export const initMockFetch = () => {
 
       // 6. Contributions
       if (path === '/api/contributions' && method === 'GET') return jsonRes(backendStore.getContributions(url.searchParams.get('memberId') || undefined));
+      if (path.match(/^\/api\/members\/([^\/]+)\/contributions$/) && method === 'GET') {
+        return jsonRes(backendStore.getContributions(path.split('/')[3]));
+      }
       if (path === '/api/contributions/pay' && method === 'POST') return jsonRes(backendStore.processOnlineContribution(body), 201);
 
       // 7. Welfare
       if (path === '/api/welfare' && method === 'GET') return jsonRes(backendStore.getWelfareApplications(url.searchParams.get('memberId') || undefined));
+      if (path.match(/^\/api\/members\/([^\/]+)\/welfare$/) && method === 'GET') {
+        return jsonRes(backendStore.getWelfareApplications(path.split('/')[3]));
+      }
       if (path === '/api/welfare/apply' && method === 'POST') return jsonRes(backendStore.submitWelfareApplication(body), 201);
       if (path.match(/^\/api\/welfare\/([^\/]+)\/status$/) && method === 'PATCH') {
         return jsonRes(backendStore.updateWelfareStatus(path.split('/')[3], body.status, body.amountApproved, body.notes, body.disbursedTxnRef, body.actorName));
