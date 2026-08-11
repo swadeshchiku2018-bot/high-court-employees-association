@@ -3,13 +3,10 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { backendStore } from "./src/backend/dataStore";
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+app.use(express.json());
 
-  app.use(express.json());
-
-  // --- API ROUTES ---
+// --- API ROUTES ---
 
   // Settings & CMS
   app.get("/api/settings", (req, res) => {
@@ -232,24 +229,32 @@ async function startServer() {
   });
 
   // --- VITE / STATIC SERVING ---
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+  // Export app for Vercel Serverless environment
+  export default app;
+
+  async function startServer() {
+    if (process.env.VERCEL) return; // Vercel handles serving independently
+    
+    const PORT = process.env.PORT || 3000;
+    
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`High Court Employees' Association Server running on http://0.0.0.0:${PORT}`);
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`High Court Employees' Association Server running on http://0.0.0.0:${PORT}`);
-  });
-}
 
 startServer().catch(err => {
   console.error("Failed to start server:", err);
