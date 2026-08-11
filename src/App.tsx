@@ -110,7 +110,12 @@ const MainApp: React.FC = () => {
 
         {/* Admin Portal (Strictly Guarded) */}
         {(currentRoute === '/admin/dashboard' || currentRoute.startsWith('/admin')) && (
-          currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'EXECUTIVE') ? (
+          currentUser && (
+            currentUser.role === 'SUPER_ADMIN' ||
+            currentUser.role === 'PRESIDENT' ||
+            currentUser.role === 'SECRETARY' ||
+            currentUser.role === 'TREASURER'
+          ) ? (
             <AdminDashboard />
           ) : (
             <LoginPage onNavigate={navigate} />
