@@ -28,7 +28,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     setIsSubmitting(false);
 
     if (user) {
-      if (user.role === 'ADMIN' || user.role === 'EXECUTIVE') {
+      if (user.role === 'SUPER_ADMIN' || user.role === 'PRESIDENT' || user.role === 'SECRETARY' || user.role === 'TREASURER') {
         onNavigate('/admin/dashboard');
       } else {
         onNavigate('/member/dashboard');
@@ -43,7 +43,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     const user = await login(demoEmail);
     setIsSubmitting(false);
     if (user) {
-      if (user.role === 'ADMIN' || user.role === 'EXECUTIVE') {
+      if (user.role === 'SUPER_ADMIN' || user.role === 'PRESIDENT' || user.role === 'SECRETARY' || user.role === 'TREASURER') {
         onNavigate('/admin/dashboard');
       } else {
         onNavigate('/member/dashboard');
