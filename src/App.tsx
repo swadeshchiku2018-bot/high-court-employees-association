@@ -20,8 +20,8 @@ import { ReceiptModal } from './components/common/ReceiptModal';
 import { Contribution } from './types';
 
 const MainApp: React.FC = () => {
-  // Start on /login page on fresh load or reload as requested
-  const [currentRoute, setCurrentRoute] = useState<string>('/login');
+  // Start on / page on fresh load or reload
+  const [currentRoute, setCurrentRoute] = useState<string>('/');
   const [verifyIdParam, setVerifyIdParam] = useState<string>('');
   const { currentUser, refreshUserData } = useAuth();
 
