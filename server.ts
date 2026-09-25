@@ -679,5 +679,3 @@ if (!process.env.VERCEL) {
   initDb().then(() => seedAdminAccount()).catch(console.error);
 }
 
-// Export the Express API for Vercel
-export default app;

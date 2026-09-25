@@ -745,7 +745,7 @@ export const AdminDashboard: React.FC = () => {
         const savedContrib = await res.json();
         setIsManualPaymentOpen(false);
         loadAllData();
-        
+
         if (window.confirm(`Manual contribution logged successfully!\nReceipt No: ${savedContrib.receiptNo}\n\nWould you like to download/print this receipt now?`)) {
           printReceipt(savedContrib);
         }
@@ -1784,7 +1784,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer bg-amber-50 p-3 rounded-lg border border-amber-200">
-                <input 
+                <input
                   type="checkbox"
                   checked={noticeForm.isImportant}
                   onChange={e => setNoticeForm({ ...noticeForm, isImportant: e.target.checked })}
