@@ -1,0 +1,6 @@
+{
+  "name": "High Court Employees' Association",
+  "description": "Official portal for High Court Employees' Association featuring public landing page, member portal with digital ID card, welfare fund management, contribution receipts, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

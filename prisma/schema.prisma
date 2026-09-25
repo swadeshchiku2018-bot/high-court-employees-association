@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id                   String   @id @default(uuid())
+  membershipId         String   @unique
+  name                 String
+  designation          String
+  department           String
+  postingLocation      String
+  employeeCategory     String
+  employeeCode         String   @unique
+  email                String   @unique
+  mobile               String
+  bloodGroup           String
+  membershipType       String
+  membershipDate       String
+  monthlyContribution  Float    @default(500)
+  status               String   @default("PENDING")
+  avatarUrl            String?
+  documents            Json     @default("[]") // Store array of Document URLs
+  role                 String   @default("MEMBER")
+  verifiedBy           String?
+  verifiedAt           String?
+  rejectionReason      String?
+
+  contributions        Contribution[]
+  welfareApplications  WelfareApplication[]
+  eventRegistrations   EventRegistration[]
+  notifications        AppNotification[]
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model OfficeBearer {
+  id          String   @id @default(uuid())
+  name        String
+  designation String
+  priority    Int
+  avatarUrl   String?
+  department  String?
+  phone       String?
+  email       String?
+}
+
+model Contribution {
+  id               String   @id @default(uuid())
+  memberId         String
+  memberName       String
+  membershipNumber String
+  receiptNo        String   @unique
+  amount           Float
+  purpose          String
+  paymentMode      String
+  transactionId    String
+  status           String
+  date             String
+  financialYear    String
+  remarks          String?
+
+  member           Member   @relation(fields: [memberId], references: [id])
+}
+
+model WelfareApplication {
+  id               String   @id @default(uuid())
+  memberId         String
+  memberName       String
+  membershipNumber String
+  type             String
+  amountRequested  Float
+  amountApproved   Float?
+  description      String
+  status           String
+  submittedAt      String
+  updatedAt        String
+  reviewNotes      String?
+  disbursedDate    String?
+  disbursedTxnRef  String?
+  documents        Json     @default("[]") // Array of URLs
+
+  member           Member   @relation(fields: [memberId], references: [id])
+}
+
+model FundTransaction {
+  id            String   @id @default(uuid())
+  date          String
+  type          String   // 'CREDIT' | 'DEBIT'
+  category      String
+  description   String
+  amount        Float
+  referenceNo   String
+  balanceAfter  Float
+  transactionId String   @unique
+  createdBy     String
+}
+
+model Notice {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  date        String
+  category    String
+  visibility  String   @default("PUBLIC")
+  isUrgent    Boolean  @default(false)
+  attachmentUrl String?
+}
+
+model EventItem {
+  id              String   @id @default(uuid())
+  title           String
+  date            String
+  time            String
+  venue           String
+  description     String
+  type            String   // 'AGBM' | 'SPORTS' | 'CULTURAL' | 'MEETING'
+  totalRegistered Int      @default(0)
+  
+  registrations   EventRegistration[]
+}
+
+model EventRegistration {
+  id               String   @id @default(uuid())
+  eventId          String
+  memberId         String
+  memberName       String
+  membershipNumber String
+  registeredAt     String
+
+  event            EventItem @relation(fields: [eventId], references: [id])
+  member           Member    @relation(fields: [memberId], references: [id])
+}
+
+model GalleryItem {
+  id          String   @id @default(uuid())
+  title       String
+  url         String
+  date        String
+  category    String
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  userName    String
+  role        String
+  action      String
+  details     String
+  timestamp   String
+  ipAddress   String
+}
+
+model AppNotification {
+  id          String   @id @default(uuid())
+  memberId    String
+  title       String
+  message     String
+  date        String
+  read        Boolean  @default(false)
+  type        String
+
+  member      Member   @relation(fields: [memberId], references: [id])
+}
+
+model AssociationSettings {
+  id                  Int      @id @default(1) // Single row table
+  name                String
+  shortName           String
+  emblemUrl           String
+  tagline             String
+  heroTitle           String
+  heroSubtitle        String
+  address             String
+  phone               String
+  email               String
+  officeHours         String
+  highCourtLocation   String
+  mission             String
+  vision              String
+  aboutText           String
+  welfareRules        String
+}
