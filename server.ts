@@ -1,9 +1,9 @@
 import express from "express";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { postgresStore } from "./src/backend/postgresStore";
-import { initDb, seedAdminAccount } from "./src/backend/initDb";
-import { query } from "./src/backend/db";
+import { postgresStore } from "./src/backend/postgresStore.js";
+import { initDb, seedAdminAccount } from "./src/backend/initDb.js";
+import { query } from "./src/backend/db.js";
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
