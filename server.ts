@@ -675,7 +675,6 @@ if (!process.env.VERCEL) {
     console.error("Failed to start server:", err);
   });
 } else {
-  // If in Vercel, initialize DB asynchronously but don't block
-  initDb().then(() => seedAdminAccount()).catch(console.error);
+  // DB initialization is skipped on Vercel cold starts.
+  console.log("Vercel environment detected. Skipping top-level DB init.");
 }
-

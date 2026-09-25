@@ -5,7 +5,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const connectionString = process.env.DATABASE_URL;
+const rawConnectionString = process.env.DATABASE_URL || '';
+const connectionString = rawConnectionString.replace('?sslmode=require', '').replace('&sslmode=require', '');
 
 if (!connectionString) {
   console.warn("⚠️ DATABASE_URL is not defined in environment variables!");
@@ -13,7 +14,7 @@ if (!connectionString) {
 
 export const pool = new Pool({
   connectionString,
-  ssl: (process.env.VERCEL || connectionString?.includes('sslmode=') || connectionString?.includes('aivencloud.com'))
+  ssl: (process.env.VERCEL || rawConnectionString.includes('sslmode=') || rawConnectionString.includes('aivencloud.com'))
     ? { rejectUnauthorized: false } 
     : undefined,
   max: 10,
