@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { createServer as createViteServer } from "vite";
 import { postgresStore } from "./src/backend/postgresStore";
 import { initDb, seedAdminAccount } from "./src/backend/initDb";
 import { query } from "./src/backend/db";
@@ -650,7 +649,8 @@ async function startServer() {
     console.log("Running in Vercel Serverless environment");
   } else {
     if (process.env.NODE_ENV !== "production") {
-      const vite = await createViteServer({
+      const viteModule = await import("vite");
+      const vite = await viteModule.createServer({
         server: { middlewareMode: true },
         appType: "spa",
       });
