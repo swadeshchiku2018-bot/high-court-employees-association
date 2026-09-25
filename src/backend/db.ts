@@ -13,7 +13,7 @@ if (!connectionString) {
 
 export const pool = new Pool({
   connectionString,
-  ssl: connectionString?.includes('sslmode=') || connectionString?.includes('aivencloud.com') 
+  ssl: (process.env.VERCEL || connectionString?.includes('sslmode=') || connectionString?.includes('aivencloud.com'))
     ? { rejectUnauthorized: false } 
     : undefined,
   max: 10,
