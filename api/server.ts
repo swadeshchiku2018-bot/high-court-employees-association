@@ -2,6 +2,12 @@
 import serverModule from '../dist/server.cjs';
 const app = serverModule.app || serverModule.default || serverModule;
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function (req: any, res: any) {
   try {
     return app(req, res);
