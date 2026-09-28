@@ -627,7 +627,7 @@ app.get("/api/audit-logs", async (req, res) => {
 });
 
 // Export app for Vercel Serverless environment
-export default app;
+export { app };
 
 async function startServer() {
   if (process.env.VERCEL) return;

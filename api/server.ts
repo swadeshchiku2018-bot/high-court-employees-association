@@ -1,4 +1,4 @@
-import app from '../server.js';
+import { app } from '../server.js';
 import { initDb, seedAdminAccount } from '../src/backend/initDb.js';
 
 let isDbInitialized = false;
