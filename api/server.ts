@@ -1,4 +1,6 @@
-import { app } from '../server.ts';
+// @ts-ignore
+import serverModule from '../dist/server.cjs';
+const app = serverModule.app || serverModule.default || serverModule;
 
 export default async function (req: any, res: any) {
   try {
