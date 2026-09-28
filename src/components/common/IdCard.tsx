@@ -156,29 +156,35 @@ export const IdCard: React.FC<IdCardProps> = ({ member, settings }) => {
                   {/* Member Details */}
                   <div className="flex-1 flex relative">
                     <div className="w-full max-w-[310px] text-[12px] space-y-[3px] mt-1 z-10 text-slate-900 leading-[1.2]">
-                      <div className="grid grid-cols-[125px_1fr]">
-                        <span className="font-medium">Name</span>
-                        <span className="font-extrabold break-words pr-2">: {member.name.toUpperCase()}</span>
+                      <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
+                        <span className="font-medium text-left">Name</span>
+                        <span className="font-medium text-center">:</span>
+                        <span className="font-extrabold break-words text-right">{member.name.toUpperCase()}</span>
                       </div>
-                      <div className="grid grid-cols-[125px_1fr]">
-                        <span className="font-medium">Designation</span>
-                        <span className="font-medium break-words pr-2">: {member.designation.toUpperCase()}</span>
+                      <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
+                        <span className="font-medium text-left">Designation</span>
+                        <span className="font-medium text-center">:</span>
+                        <span className="font-medium break-words text-right">{member.designation.toUpperCase()}</span>
                       </div>
-                      <div className="grid grid-cols-[125px_1fr]">
-                        <span className="font-medium">Department/Section</span>
-                        <span className="font-medium break-words pr-2">: {member.department.toUpperCase()}</span>
+                      <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
+                        <span className="font-medium text-left">Department</span>
+                        <span className="font-medium text-center">:</span>
+                        <span className="font-medium break-words text-right">{member.department.toUpperCase()}</span>
                       </div>
-                      <div className="grid grid-cols-[125px_1fr] mt-1">
-                        <span className="font-medium">Membership No.</span>
-                        <span className="font-extrabold text-[#002855] break-words pr-2">: {member.membershipId}</span>
+                      <div className="grid grid-cols-[115px_10px_1fr] gap-x-1 mt-1">
+                        <span className="font-medium text-left">Membership No.</span>
+                        <span className="font-medium text-center">:</span>
+                        <span className="font-extrabold text-[#002855] break-words text-right">{member.membershipId}</span>
                       </div>
-                      <div className="grid grid-cols-[125px_1fr]">
-                        <span className="font-medium">Date of Issue</span>
-                        <span className="font-medium">: {issueDate}</span>
+                      <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
+                        <span className="font-medium text-left">Date of Issue</span>
+                        <span className="font-medium text-center">:</span>
+                        <span className="font-medium text-right">{issueDate}</span>
                       </div>
-                      <div className="grid grid-cols-[125px_1fr]">
-                        <span className="font-medium">Valid Upto</span>
-                        <span className="font-medium">: {validUpto}</span>
+                      <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
+                        <span className="font-medium text-left">Valid Upto</span>
+                        <span className="font-medium text-center">:</span>
+                        <span className="font-medium text-right">{validUpto}</span>
                       </div>
                     </div>
 
