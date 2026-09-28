@@ -10,6 +10,28 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // --- HEALTH & STATUS ---
+import { pool } from './src/backend/db.js';
+import { initDb, seedAdminAccount } from './src/backend/initDb.js';
+
+app.get("/api/db-test", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT 1 AS connected');
+    res.json({ connected: true, message: "Database connected successfully!", result: result.rows });
+  } catch (err: any) {
+    res.status(500).json({ connected: false, error: err.message, stack: err.stack });
+  }
+});
+
+app.get("/api/init-db", async (req, res) => {
+  try {
+    await initDb();
+    await seedAdminAccount();
+    res.json({ success: true, message: "Database initialized and admin account seeded successfully (admin / admin)" });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+});
+
 app.get("/api/health", async (req, res) => {
   try {
     const settings = await postgresStore.getSettings();
