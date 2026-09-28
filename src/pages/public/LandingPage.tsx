@@ -18,21 +18,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch sequentially to prevent Aiven Postgres free-tier connection pool exhaustion (5 parallel Vercel serverless requests)
-        const sRes = await fetch('/api/settings');
-        if (sRes.ok) setSettings(await sRes.json());
-
-        const obRes = await fetch('/api/office-bearers');
-        if (obRes.ok) setOfficeBearers(await obRes.json());
-
-        const nRes = await fetch('/api/notices?visibility=PUBLIC');
-        if (nRes.ok) setNotices(await nRes.json());
-
-        const eRes = await fetch('/api/events');
-        if (eRes.ok) setEvents(await eRes.json());
-
-        const gRes = await fetch('/api/gallery');
-        if (gRes.ok) setGallery(await gRes.json());
+        // Fetch all public data instantly using the aggregated endpoint
+        const res = await fetch('/api/public/initial-data');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.settings) setSettings(data.settings);
+          if (data.officeBearers) setOfficeBearers(data.officeBearers);
+          if (data.notices) setNotices(data.notices);
+          if (data.events) setEvents(data.events);
+          if (data.gallery) setGallery(data.gallery);
+        }
       } catch (e) {
         console.error("Landing data load error:", e);
       } finally {

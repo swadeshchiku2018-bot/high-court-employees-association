@@ -189,36 +189,22 @@ export const AdminDashboard: React.FC = () => {
 
   const loadAllData = async () => {
     try {
-      const memRes = await fetch('/api/members');
-      if (memRes.ok) setMembers(await memRes.json());
-
-      const conRes = await fetch('/api/contributions');
-      if (conRes.ok) setContributions(await conRes.json());
-
-      const ledgerRes = await fetch('/api/fund/ledger');
-      if (ledgerRes.ok) setFundTransactions(await ledgerRes.json());
-
-      const welfareRes = await fetch('/api/welfare');
-      if (welfareRes.ok) setWelfareGrants(await welfareRes.json());
-
-      const obRes = await fetch('/api/office-bearers');
-      if (obRes.ok) setOfficeBearers(await obRes.json());
-
-      const notRes = await fetch('/api/notices');
-      if (notRes.ok) setNotices(await notRes.json());
-
-      const auditRes = await fetch('/api/audit-logs');
-      if (auditRes.ok) setAuditLogs(await auditRes.json());
-
-      const setRes = await fetch('/api/settings');
-      if (setRes.ok) {
-        const data = await setRes.json();
-        setSettings(data);
-        if (data) {
+      const res = await fetch('/api/admin/initial-data');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.members) setMembers(data.members);
+        if (data.contributions) setContributions(data.contributions);
+        if (data.fundTransactions) setFundTransactions(data.fundTransactions);
+        if (data.welfareGrants) setWelfareGrants(data.welfareGrants);
+        if (data.officeBearers) setOfficeBearers(data.officeBearers);
+        if (data.notices) setNotices(data.notices);
+        if (data.auditLogs) setAuditLogs(data.auditLogs);
+        if (data.settings) {
+          setSettings(data.settings);
           setCmsForm({
-            name: data.name || data.associationName || "Orissa High Court Employees' Association",
-            hero_title: data.hero_title || data.patronMessage || "Serving Justice with Administrative Excellence",
-            about_text: data.about_text || data.aboutText || ""
+            name: data.settings.name || data.settings.associationName || "Orissa High Court Employees' Association",
+            hero_title: data.settings.hero_title || data.settings.patronMessage || "Serving Justice with Administrative Excellence",
+            about_text: data.settings.about_text || data.settings.aboutText || ""
           });
         }
       }

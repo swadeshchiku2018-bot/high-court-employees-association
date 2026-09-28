@@ -46,6 +46,40 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// --- AGGREGATED ENDPOINTS FOR FAST PAGE LOAD ---
+app.get("/api/public/initial-data", async (req, res) => {
+  try {
+    const [settings, officeBearers, notices, events, gallery] = await Promise.all([
+      postgresStore.getSettings(),
+      postgresStore.getOfficeBearers(),
+      postgresStore.getNotices('PUBLIC'),
+      postgresStore.getEvents(),
+      postgresStore.getGallery()
+    ]);
+    res.json({ settings, officeBearers, notices, events, gallery });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/initial-data", async (req, res) => {
+  try {
+    const [members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings] = await Promise.all([
+      postgresStore.getMembers(),
+      postgresStore.getContributions(),
+      postgresStore.getFundLedger(),
+      postgresStore.getWelfareGrants(),
+      postgresStore.getOfficeBearers(),
+      postgresStore.getNotices(),
+      postgresStore.getAuditLogs(),
+      postgresStore.getSettings()
+    ]);
+    res.json({ members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- SETTINGS & CMS ---
 app.get("/api/settings", async (req, res) => {
   try {
