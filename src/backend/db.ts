@@ -17,8 +17,8 @@ export const pool = new Pool({
   ssl: (process.env.VERCEL || rawConnectionString.includes('sslmode=') || rawConnectionString.includes('aivencloud.com'))
     ? { rejectUnauthorized: false } 
     : undefined,
-  max: 10,
-  idleTimeoutMillis: 30000,
+  max: process.env.VERCEL ? 1 : 10, // Vercel Serverless MUST use max 1 to prevent connection pool exhaustion on free tier
+  idleTimeoutMillis: 10000, // Close idle connections quickly
   connectionTimeoutMillis: 10000,
 });
 
