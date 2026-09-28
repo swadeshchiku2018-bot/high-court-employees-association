@@ -187,24 +187,44 @@ export const AdminDashboard: React.FC = () => {
   const [passwordChangeMessage, setPasswordChangeMessage] = useState({ type: '', text: '' });
 
 
-  const loadAllData = () => {
-    fetch('/api/members').then(r => r.json()).then(setMembers).catch(console.error);
-    fetch('/api/contributions').then(r => r.json()).then(setContributions).catch(console.error);
-    fetch('/api/fund/ledger').then(r => r.json()).then(setFundTransactions).catch(console.error);
-    fetch('/api/welfare').then(r => r.json()).then(setWelfareGrants).catch(console.error);
-    fetch('/api/office-bearers').then(r => r.json()).then(setOfficeBearers).catch(console.error);
-    fetch('/api/notices').then(r => r.json()).then(setNotices).catch(console.error);
-    fetch('/api/audit-logs').then(r => r.json()).then(setAuditLogs).catch(console.error);
-    fetch('/api/settings').then(r => r.json()).then(data => {
-      setSettings(data);
-      if (data) {
-        setCmsForm({
-          name: data.name || data.associationName || "Orissa High Court Employees' Association",
-          hero_title: data.hero_title || data.patronMessage || "Serving Justice with Administrative Excellence",
-          about_text: data.about_text || data.aboutText || ""
-        });
+  const loadAllData = async () => {
+    try {
+      const memRes = await fetch('/api/members');
+      if (memRes.ok) setMembers(await memRes.json());
+
+      const conRes = await fetch('/api/contributions');
+      if (conRes.ok) setContributions(await conRes.json());
+
+      const ledgerRes = await fetch('/api/fund/ledger');
+      if (ledgerRes.ok) setFundTransactions(await ledgerRes.json());
+
+      const welfareRes = await fetch('/api/welfare');
+      if (welfareRes.ok) setWelfareGrants(await welfareRes.json());
+
+      const obRes = await fetch('/api/office-bearers');
+      if (obRes.ok) setOfficeBearers(await obRes.json());
+
+      const notRes = await fetch('/api/notices');
+      if (notRes.ok) setNotices(await notRes.json());
+
+      const auditRes = await fetch('/api/audit-logs');
+      if (auditRes.ok) setAuditLogs(await auditRes.json());
+
+      const setRes = await fetch('/api/settings');
+      if (setRes.ok) {
+        const data = await setRes.json();
+        setSettings(data);
+        if (data) {
+          setCmsForm({
+            name: data.name || data.associationName || "Orissa High Court Employees' Association",
+            hero_title: data.hero_title || data.patronMessage || "Serving Justice with Administrative Excellence",
+            about_text: data.about_text || data.aboutText || ""
+          });
+        }
       }
-    }).catch(console.error);
+    } catch (error) {
+      console.error("Error loading admin data:", error);
+    }
   };
 
   // Handler: Save Edited Office Bearer
