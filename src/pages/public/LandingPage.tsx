@@ -18,18 +18,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sRes, obRes, nRes, eRes, gRes] = await Promise.all([
-          fetch('/api/settings'),
-          fetch('/api/office-bearers'),
-          fetch('/api/notices?visibility=PUBLIC'),
-          fetch('/api/events'),
-          fetch('/api/gallery')
-        ]);
+        // Fetch sequentially to prevent Aiven Postgres free-tier connection pool exhaustion (5 parallel Vercel serverless requests)
+        const sRes = await fetch('/api/settings');
+        if (sRes.ok) setSettings(await sRes.json());
 
-        if (sRes.ok) setSettings(await sRes.ok ? await sRes.json() : null);
+        const obRes = await fetch('/api/office-bearers');
         if (obRes.ok) setOfficeBearers(await obRes.json());
+
+        const nRes = await fetch('/api/notices?visibility=PUBLIC');
         if (nRes.ok) setNotices(await nRes.json());
+
+        const eRes = await fetch('/api/events');
         if (eRes.ok) setEvents(await eRes.json());
+
+        const gRes = await fetch('/api/gallery');
         if (gRes.ok) setGallery(await gRes.json());
       } catch (e) {
         console.error("Landing data load error:", e);
@@ -202,19 +204,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 border-l-4 border-[#003366] shadow-sm flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase">Total Registered Members</span>
-              <span className="text-2xl font-bold text-[#003366]">{settings?.stats.totalMembers.toLocaleString('en-IN') || "1,248"}</span>
+              <span className="text-2xl font-bold text-[#003366]">{settings?.stats?.totalMembers?.toLocaleString('en-IN') || "1,248"}</span>
             </div>
             <div className="bg-white p-4 border-l-4 border-amber-500 shadow-sm flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase">Active Cadre Strength</span>
-              <span className="text-2xl font-bold text-amber-600">{settings?.stats.activeMembers.toLocaleString('en-IN') || "1,180"}</span>
+              <span className="text-2xl font-bold text-amber-600">{settings?.stats?.activeMembers?.toLocaleString('en-IN') || "1,180"}</span>
             </div>
             <div className="bg-white p-4 border-l-4 border-[#003366] shadow-sm flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase">Welfare Corpus Fund</span>
-              <span className="text-2xl font-bold text-[#003366]">₹{((settings?.stats.welfareFundBalance || 14850000) / 10000000).toFixed(2)} Cr</span>
+              <span className="text-2xl font-bold text-[#003366]">₹{((settings?.stats?.welfareFundBalance || 14850000) / 10000000).toFixed(2)} Cr</span>
             </div>
             <div className="bg-white p-4 border-l-4 border-amber-500 shadow-sm flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase">Members Assisted (YTD)</span>
-              <span className="text-2xl font-bold text-amber-600">{settings?.stats.membersSupported || 342}</span>
+              <span className="text-2xl font-bold text-amber-600">{settings?.stats?.membersSupported || 342}</span>
             </div>
           </div>
         </div>
