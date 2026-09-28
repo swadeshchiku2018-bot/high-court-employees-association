@@ -159,32 +159,32 @@ export const IdCard: React.FC<IdCardProps> = ({ member, settings }) => {
                       <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
                         <span className="font-medium text-left">Name</span>
                         <span className="font-medium text-center">:</span>
-                        <span className="font-extrabold break-words text-right">{member.name.toUpperCase()}</span>
+                        <span className="font-extrabold break-words text-left">{member.name.toUpperCase()}</span>
                       </div>
                       <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
                         <span className="font-medium text-left">Designation</span>
                         <span className="font-medium text-center">:</span>
-                        <span className="font-medium break-words text-right">{member.designation.toUpperCase()}</span>
+                        <span className="font-medium break-words text-left">{member.designation.toUpperCase()}</span>
                       </div>
                       <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
                         <span className="font-medium text-left">Department</span>
                         <span className="font-medium text-center">:</span>
-                        <span className="font-medium break-words text-right">{member.department.toUpperCase()}</span>
+                        <span className="font-medium break-words text-left">{member.department.toUpperCase()}</span>
                       </div>
                       <div className="grid grid-cols-[115px_10px_1fr] gap-x-1 mt-1">
                         <span className="font-medium text-left">Membership No.</span>
                         <span className="font-medium text-center">:</span>
-                        <span className="font-extrabold text-[#002855] break-words text-right">{member.membershipId}</span>
+                        <span className="font-extrabold text-[#002855] break-words text-left">{member.membershipId}</span>
                       </div>
                       <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
                         <span className="font-medium text-left">Date of Issue</span>
                         <span className="font-medium text-center">:</span>
-                        <span className="font-medium text-right">{issueDate}</span>
+                        <span className="font-medium text-left">{issueDate}</span>
                       </div>
                       <div className="grid grid-cols-[115px_10px_1fr] gap-x-1">
                         <span className="font-medium text-left">Valid Upto</span>
                         <span className="font-medium text-center">:</span>
-                        <span className="font-medium text-right">{validUpto}</span>
+                        <span className="font-medium text-left">{validUpto}</span>
                       </div>
                     </div>
 
