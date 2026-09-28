@@ -1,5 +1,5 @@
-import { app } from '../server.js';
-import { initDb, seedAdminAccount } from '../src/backend/initDb.js';
+import { app } from '../server.ts';
+import { initDb, seedAdminAccount } from '../src/backend/initDb.ts';
 
 let isDbInitialized = false;
 
