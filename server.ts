@@ -678,5 +678,3 @@ if (!process.env.VERCEL) {
   // DB initialization is skipped on Vercel cold starts.
   console.log("Vercel environment detected. Skipping top-level DB init.");
 }
-
-export default app;
