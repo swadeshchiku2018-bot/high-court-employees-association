@@ -5,11 +5,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const rawConnectionString = process.env.DATABASE_URL || '';
+const rawConnectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 const connectionString = rawConnectionString.replace('?sslmode=require', '').replace('&sslmode=require', '');
 
 if (!connectionString) {
-  console.warn("⚠️ DATABASE_URL is not defined in environment variables!");
+  console.warn("⚠️ DATABASE_URL or POSTGRES_URL is not defined in environment variables!");
 }
 
 export const pool = new Pool({
