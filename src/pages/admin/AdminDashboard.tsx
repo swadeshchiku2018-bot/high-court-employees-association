@@ -151,6 +151,7 @@ export const AdminDashboard: React.FC = () => {
   });
 
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null);
   const [noticeForm, setNoticeForm] = useState({
     title: '',
     category: 'CIRCULAR' as Notice['category'],
@@ -680,15 +681,16 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Handler: Create Notice
-  const handleCreateNotice = async (e: React.FormEvent) => {
+  // Handler: Save Notice (Create or Update)
+  const handleSaveNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const content = noticeForm.content.trim() ||
         (noticeForm.attachmentUrl ? `Official notification document uploaded and attached. Please open the attached PDF for complete details.` : 'Official Circular from High Court Employees Association.');
 
-      const res = await fetch('/api/notices', {
-        method: 'POST',
+      const isEdit = !!editingNoticeId;
+      const res = await fetch(isEdit ? `/api/notices/${editingNoticeId}` : '/api/notices', {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...noticeForm,
@@ -699,11 +701,12 @@ export const AdminDashboard: React.FC = () => {
       });
       if (res.ok) {
         setIsNoticeModalOpen(false);
+        setEditingNoticeId(null);
         setNoticeForm({ title: '', category: 'CIRCULAR', content: '', description: '', visibility: 'PUBLIC', attachmentUrl: '', isImportant: false });
         setUploadedPdfFileName('');
         setUploadedPdfFileSize('');
         loadAllData();
-        alert("Official notice published successfully!");
+        alert(isEdit ? "Official notice updated successfully!" : "Official notice published successfully!");
       } else {
         const err = await res.json();
         alert(err.error || "Failed to publish notice.");
@@ -1685,7 +1688,13 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-xs text-slate-500">Publish official communications, GBM notices, and press releases.</p>
             </div>
             <button
-              onClick={() => setIsNoticeModalOpen(true)}
+              onClick={() => {
+                setEditingNoticeId(null);
+                setNoticeForm({ title: '', category: 'CIRCULAR', content: '', description: '', visibility: 'PUBLIC', attachmentUrl: '', isImportant: false });
+                setUploadedPdfFileName('');
+                setUploadedPdfFileSize('');
+                setIsNoticeModalOpen(true);
+              }}
               className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2"
             >
               <Plus className="w-4 h-4 text-amber-400" />
@@ -1725,6 +1734,27 @@ export const AdminDashboard: React.FC = () => {
                     <Eye className="w-3.5 h-3.5 text-blue-700" />
                     <span>View Notice (New Tab)</span>
                   </a>
+
+                  <button
+                    onClick={() => {
+                      setEditingNoticeId(n.id);
+                      setNoticeForm({
+                        title: n.title,
+                        category: n.category,
+                        content: n.content || '',
+                        description: n.description || '',
+                        visibility: n.visibility,
+                        attachmentUrl: n.attachmentUrl ? 'true' : '', // If there's an attachment URL string (or bool), map appropriately
+                        isImportant: n.isImportant
+                      });
+                      setIsNoticeModalOpen(true);
+                    }}
+                    className="p-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 font-bold text-[11px]"
+                    title="Edit Notice"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Edit</span>
+                  </button>
 
                   <button
                     onClick={() => handleDeleteNotice(n.id, n.title)}
@@ -2043,13 +2073,13 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
             <div className="bg-slate-900 text-white p-5 flex justify-between items-center border-b border-slate-800">
-              <h3 className="font-bold text-base text-amber-300">Publish Official Notice</h3>
+              <h3 className="font-bold text-base text-amber-300">{editingNoticeId ? 'Edit Official Notice' : 'Publish Official Notice'}</h3>
               <button onClick={() => setIsNoticeModalOpen(false)} className="text-slate-400 hover:text-white font-bold cursor-pointer">
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateNotice} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleSaveNotice} className="p-6 space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Notice Title *</label>
                 <input
@@ -2216,7 +2246,7 @@ export const AdminDashboard: React.FC = () => {
                   type="submit"
                   className="px-6 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs cursor-pointer"
                 >
-                  Publish Notice
+                  {editingNoticeId ? 'Save Changes' : 'Publish Notice'}
                 </button>
               </div>
             </form>

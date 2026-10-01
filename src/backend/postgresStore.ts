@@ -1006,6 +1006,28 @@ export class PostgresStore {
     return true;
   }
 
+  async updateNotice(id: string, updates: Partial<Notice>, actorName: string = "Admin"): Promise<Notice | null> {
+    const rows = await query('SELECT * FROM notices WHERE id = $1', [id]);
+    if (rows.length === 0) return null;
+    
+    const title = updates.title !== undefined ? updates.title : rows[0].title;
+    const category = updates.category !== undefined ? updates.category : rows[0].category;
+    const description = updates.description !== undefined ? updates.description : rows[0].description;
+    const content = updates.content !== undefined ? updates.content : rows[0].content;
+    const attachmentUrl = updates.attachmentUrl !== undefined ? updates.attachmentUrl : rows[0].attachment_url;
+    const visibility = updates.visibility !== undefined ? updates.visibility : rows[0].visibility;
+    const isImportant = updates.isImportant !== undefined ? updates.isImportant : rows[0].is_important;
+    
+    await query(`
+      UPDATE notices 
+      SET title = $1, category = $2, description = $3, content = $4, attachment_url = $5, visibility = $6, is_important = $7
+      WHERE id = $8
+    `, [title, category, description, content, attachmentUrl, visibility, isImportant, id]);
+    
+    await this.addAuditLog(actorName, "SECRETARY", "NOTICE_UPDATED", `Updated notice '${title}'`);
+    return this.getNoticeById(id);
+  }
+
   async getNoticeById(id: string): Promise<Notice | null> {
     const rows = await query('SELECT * FROM notices WHERE id = $1', [id]);
     if (rows.length === 0) return null;

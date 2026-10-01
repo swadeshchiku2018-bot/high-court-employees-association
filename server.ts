@@ -619,6 +619,17 @@ app.post("/api/notices", async (req, res) => {
   }
 });
 
+app.put("/api/notices/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { actorName, ...updates } = req.body;
+    const updated = await postgresStore.updateNotice(id, updates, actorName);
+    if (!updated) return res.status(404).json({ error: "Notice not found" });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
 app.delete("/api/notices/:id", async (req, res) => {
   try {
     const { actorName } = req.body;
