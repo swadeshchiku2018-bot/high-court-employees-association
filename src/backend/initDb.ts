@@ -233,6 +233,19 @@ export async function createTables(): Promise<void> {
       content TEXT NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS grievances (
+      id TEXT PRIMARY KEY,
+      member_id TEXT REFERENCES members(id) ON DELETE CASCADE,
+      member_name TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      content TEXT NOT NULL,
+      attachment_url TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      admin_notes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `);
   console.log("All tables checked/created successfully and migrations applied.");
 }

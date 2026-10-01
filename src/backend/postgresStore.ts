@@ -1330,6 +1330,61 @@ export class PostgresStore {
     `, [id, postId, authorId, authorName, content]);
     return { id, postId, authorId, authorName, content, createdAt: new Date().toISOString() };
   }
+
+  // --- GRIEVANCES ---
+  async getGrievances(): Promise<Grievance[]> {
+    const rows = await query('SELECT * FROM grievances ORDER BY created_at DESC');
+    return rows.map((r: any) => ({
+      id: r.id,
+      memberId: r.member_id,
+      memberName: r.member_name,
+      subject: r.subject,
+      content: r.content,
+      attachmentUrl: r.attachment_url || undefined,
+      status: r.status,
+      adminNotes: r.admin_notes || undefined,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    }));
+  }
+
+  async getGrievancesByMember(memberId: string): Promise<Grievance[]> {
+    const rows = await query('SELECT * FROM grievances WHERE member_id = $1 ORDER BY created_at DESC', [memberId]);
+    return rows.map((r: any) => ({
+      id: r.id,
+      memberId: r.member_id,
+      memberName: r.member_name,
+      subject: r.subject,
+      content: r.content,
+      attachmentUrl: r.attachment_url || undefined,
+      status: r.status,
+      adminNotes: r.admin_notes || undefined,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    }));
+  }
+
+  async submitGrievance(memberId: string, memberName: string, subject: string, content: string, attachmentUrl?: string): Promise<Grievance> {
+    const id = `grv-${Date.now()}`;
+    await query(`
+      INSERT INTO grievances (id, member_id, member_name, subject, content, attachment_url)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [id, memberId, memberName, subject, content, attachmentUrl || null]);
+    
+    return {
+      id, memberId, memberName, subject, content, attachmentUrl, status: 'PENDING',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    };
+  }
+
+  async updateGrievanceStatus(id: string, status: string, adminNotes?: string, actorName: string = "Admin"): Promise<void> {
+    await query(`
+      UPDATE grievances 
+      SET status = $1, admin_notes = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+    `, [status, adminNotes || null, id]);
+    await this.addAuditLog(actorName, "SECRETARY", "GRIEVANCE_UPDATED", `Updated grievance ${id} to ${status}`);
+  }
 }
 
 export const postgresStore = new PostgresStore();

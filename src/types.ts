@@ -224,3 +224,17 @@ export interface GossipPost {
   createdAt: string;
   comments: GossipComment[];
 }
+
+export interface Grievance {
+  id: string;
+  memberId: string;
+  memberName: string;
+  subject: string;
+  content: string;
+  attachmentUrl?: string; // base64 pdf
+  status: 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

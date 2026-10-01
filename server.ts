@@ -74,7 +74,7 @@ app.get("/api/public/initial-data", async (req, res) => {
 
 app.get("/api/admin/initial-data", async (req, res) => {
   try {
-    const [members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events] = await Promise.all([
+    const [members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events, grievances] = await Promise.all([
       postgresStore.getMembers(),
       postgresStore.getContributions(),
       postgresStore.getFundLedger(),
@@ -83,9 +83,10 @@ app.get("/api/admin/initial-data", async (req, res) => {
       postgresStore.getNotices(),
       postgresStore.getAuditLogs(),
       postgresStore.getSettings(),
-      postgresStore.getEvents()
+      postgresStore.getEvents(),
+      postgresStore.getGrievances()
     ]);
-    res.json({ members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events });
+    res.json({ members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events, grievances });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -767,6 +768,45 @@ app.post("/api/gossip/:id/comment", async (req, res) => {
     const { authorId, authorName, content } = req.body;
     const comment = await postgresStore.addGossipComment(req.params.id, authorId, authorName, content);
     res.status(201).json(comment);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// --- GRIEVANCES ---
+app.get("/api/grievances", async (req, res) => {
+  try {
+    const grievances = await postgresStore.getGrievances();
+    res.json(grievances);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/grievances/member/:memberId", async (req, res) => {
+  try {
+    const grievances = await postgresStore.getGrievancesByMember(req.params.memberId);
+    res.json(grievances);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/grievances", async (req, res) => {
+  try {
+    const { memberId, memberName, subject, content, attachmentUrl } = req.body;
+    const grievance = await postgresStore.submitGrievance(memberId, memberName, subject, content, attachmentUrl);
+    res.status(201).json(grievance);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.patch("/api/grievances/:id/status", async (req, res) => {
+  try {
+    const { status, adminNotes, actorName } = req.body;
+    await postgresStore.updateGrievanceStatus(req.params.id, status, adminNotes, actorName);
+    res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }

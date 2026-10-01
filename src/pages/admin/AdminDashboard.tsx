@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Member, Contribution, WelfareGrant, Notice, AuditLog, AssociationSettings, FundTransaction, OfficeBearer, EventItem } from '../../types';import {
+import { Member, Contribution, WelfareGrant, Notice, AuditLog, AssociationSettings, FundTransaction, OfficeBearer, EventItem, Grievance } from '../../types';import {
   Users, CreditCard, HeartHandshake, FileText, Settings, Activity, Shield, CheckCircle2,
   XCircle, Search, Plus, Filter, Download, ArrowUpRight, ArrowDownRight, DollarSign, PieChart as PieChartIcon,
   Sparkles, RefreshCw, Eye, EyeOff, Pencil, Trash2, AlertTriangle, X, UserPlus, KeyRound, Wallet,
@@ -46,6 +46,7 @@ export const AdminDashboard: React.FC = () => {
   const [welfareGrants, setWelfareGrants] = useState<WelfareGrant[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [grievances, setGrievances] = useState<Grievance[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [settings, setSettings] = useState<AssociationSettings | null>(null);
 
@@ -213,6 +214,7 @@ export const AdminDashboard: React.FC = () => {
         if (data.officeBearers) setOfficeBearers(data.officeBearers);
         if (data.notices) setNotices(data.notices);
         if (data.events) setEvents(data.events);
+        if (data.grievances) setGrievances(data.grievances);
         if (data.auditLogs) setAuditLogs(data.auditLogs);
         if (data.settings) {
           setSettings(data.settings);
@@ -345,6 +347,33 @@ export const AdminDashboard: React.FC = () => {
     } catch (e) {
       console.error(e);
       alert("Error deleting notice");
+    }
+  };
+
+  const handleUpdateGrievanceStatus = async (grievanceId: string, status: string) => {
+    const notes = prompt(`Please enter any administrative notes for this status update (${status.replace('_', ' ')}):`);
+    if (notes === null) return; // cancelled
+
+    try {
+      const res = await fetch(`/api/grievances/${grievanceId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          adminNotes: notes,
+          actorName: currentUser?.name || 'Admin'
+        })
+      });
+      if (res.ok) {
+        setGrievances(prev => prev.map(g => g.id === grievanceId ? { ...g, status: status as any, adminNotes: notes } : g));
+        alert("Grievance status updated successfully.");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to update grievance status");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating grievance status");
     }
   };
 
@@ -958,6 +987,7 @@ export const AdminDashboard: React.FC = () => {
           { id: 'MEMBERS', label: 'Member Verification Queue', icon: Users },
           { id: 'CONTRIBUTIONS', label: 'Subscription Ledger', icon: CreditCard },
           { id: 'WELFARE', label: 'Welfare Applications', icon: HeartHandshake },
+          { id: 'GRIEVANCES', label: 'Grievances', icon: AlertTriangle },
           { id: 'OFFICE_BEARERS', label: 'Executive Body & Bearers', icon: Award },
           { id: 'NOTICES', label: 'Circulars & Notices', icon: FileText },
           { id: 'EVENTS', label: 'Manage Events', icon: Calendar },
@@ -1370,6 +1400,107 @@ export const AdminDashboard: React.FC = () => {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: GRIEVANCES */}
+      {activeTab === 'GRIEVANCES' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+          <div className="border-b border-slate-200 pb-4">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6 text-blue-900" />
+              Member Grievance Redressal
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">Review and resolve member grievances, complaints, or suggestions.</p>
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            {grievances.length === 0 ? (
+              <div className="col-span-full p-8 text-center text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+                No grievances have been filed yet.
+              </div>
+            ) : (
+              grievances.map((g) => (
+                <div key={g.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col gap-3 relative overflow-hidden">
+                  <div className={`absolute top-0 left-0 w-1.5 h-full ${
+                    g.status === 'RESOLVED' ? 'bg-emerald-500' :
+                    g.status === 'IN_REVIEW' ? 'bg-amber-500' :
+                    g.status === 'REJECTED' ? 'bg-rose-500' : 'bg-blue-500'
+                  }`} />
+                  
+                  <div className="pl-3">
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                            g.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800' :
+                            g.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-900' :
+                            g.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {g.status.replace('_', ' ')}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">{new Date(g.createdAt).toLocaleString()}</span>
+                        </div>
+                        <h3 className="font-bold text-slate-900 text-sm">{g.subject}</h3>
+                        <p className="text-xs text-slate-500 font-medium">By: {g.memberName}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap">
+                      {g.content}
+                    </div>
+
+                    {g.attachmentUrl && (
+                      <div className="mt-3">
+                        <a
+                          href={g.attachmentUrl}
+                          download={`Grievance_Document_${g.id}.pdf`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-800 font-bold text-[11px] rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          Download Attached Document
+                        </a>
+                      </div>
+                    )}
+
+                    {g.adminNotes && (
+                      <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p className="text-[10px] font-bold text-amber-800 uppercase mb-1">Admin Notes:</p>
+                        <p className="text-xs text-amber-900">{g.adminNotes}</p>
+                      </div>
+                    )}
+
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                      <p className="w-full text-[10px] font-bold text-slate-400 uppercase mb-1">Update Status:</p>
+                      
+                      <button
+                        onClick={() => handleUpdateGrievanceStatus(g.id, 'IN_REVIEW')}
+                        disabled={g.status === 'IN_REVIEW'}
+                        className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[10px] uppercase rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Mark In Review
+                      </button>
+                      <button
+                        onClick={() => handleUpdateGrievanceStatus(g.id, 'RESOLVED')}
+                        disabled={g.status === 'RESOLVED'}
+                        className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[10px] uppercase rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Mark Resolved
+                      </button>
+                      <button
+                        onClick={() => handleUpdateGrievanceStatus(g.id, 'REJECTED')}
+                        disabled={g.status === 'REJECTED'}
+                        className="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-[10px] uppercase rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
