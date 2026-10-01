@@ -9,6 +9,7 @@ import {
   KeyRound, Lock, Eye, EyeOff, MessageSquare, Upload, ExternalLink
 } from 'lucide-react';
 import { GossipCard } from '../../components/common/GossipCard';
+import MDEditor from '@uiw/react-md-editor';
 
 interface MemberDashboardProps {
   onOpenPayment: (data: { title: string; amount: number; type: 'SUBSCRIPTION' | 'WELFARE_DONATION'; monthYear?: string }) => void;
@@ -1091,14 +1092,17 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Detailed Description *</label>
-                <textarea
-                  required
-                  rows={6}
-                  placeholder="Please describe your grievance in detail..."
-                  value={grievanceForm.content}
-                  onChange={e => setGrievanceForm({ ...grievanceForm, content: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
-                />
+                <div data-color-mode="light">
+                  <MDEditor
+                    value={grievanceForm.content}
+                    onChange={(val) => setGrievanceForm({ ...grievanceForm, content: val || '' })}
+                    preview="edit"
+                    height={200}
+                    textareaProps={{
+                      placeholder: 'Please describe your grievance in detail...'
+                    }}
+                  />
+                </div>
               </div>
 
               <div>
