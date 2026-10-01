@@ -42,28 +42,6 @@ export const EventsPublicPage: React.FC<EventsPublicPageProps> = ({ onNavigate }
     }
   };
 
-  const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'PRESIDENT' || currentUser?.role === 'SECRETARY';
-
-  const handleDelete = async (eventId: string) => {
-    if (!window.confirm("Are you sure you want to delete this event?")) return;
-    try {
-      const res = await fetch(`/api/events/${eventId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actorName: currentUser?.name })
-      });
-      if (res.ok) {
-        setEvents(events.filter(e => e.id !== eventId));
-        alert("Event deleted successfully.");
-      } else {
-        alert("Failed to delete event.");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Error deleting event.");
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 space-y-8 text-slate-800">
       <div className="text-center space-y-2">
@@ -77,18 +55,6 @@ export const EventsPublicPage: React.FC<EventsPublicPageProps> = ({ onNavigate }
           Participate in judicial workshops, annual sports tournaments, and Foundation Day celebrations.
         </p>
       </div>
-
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
-            onClick={() => onNavigate('/admin')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-md"
-          >
-            <Plus className="w-4 h-4" />
-            Manage Events in Admin Panel
-          </button>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {events.length === 0 ? (
@@ -131,24 +97,6 @@ export const EventsPublicPage: React.FC<EventsPublicPageProps> = ({ onNavigate }
               <span className="text-[10px] font-bold text-slate-500 uppercase">Deadline: {evt.registrationDeadline}</span>
               
               <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <>
-                    <button
-                      onClick={() => onNavigate('/admin')}
-                      className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-colors cursor-pointer"
-                      title="Edit Event (Go to Admin Panel)"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(evt.id)}
-                      className="p-2 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Event"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                )}
                 
                 {registeredMap[evt.id] ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">

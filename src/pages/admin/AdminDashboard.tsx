@@ -1694,9 +1694,12 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {notices.map((n) => (
-              <div key={n.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
-                <div className="space-y-1">
+            {notices.length === 0 ? (
+              <p className="text-center text-slate-500 text-sm py-8">No notices or circulars found.</p>
+            ) : (
+              notices.map((n) => (
+                <div key={n.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+                  <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 uppercase">
                       {n.category}
@@ -1733,7 +1736,8 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       )}
