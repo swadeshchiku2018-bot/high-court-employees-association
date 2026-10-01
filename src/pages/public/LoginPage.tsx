@@ -89,7 +89,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">Default password for new accounts: <code className="font-bold text-slate-600">ohcea123</code></p>
+            <p className="text-[10px] text-slate-400 mt-1">Please enter your assigned password.</p>
           </div>
           <button
             type="submit"

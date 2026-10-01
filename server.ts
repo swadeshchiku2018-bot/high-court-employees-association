@@ -52,6 +52,11 @@ let publicDataCacheTime = 0;
 const CACHE_TTL = 60000; // 1 minute
 
 app.get("/api/public/initial-data", async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  
   try {
     const now = Date.now();
     if (publicDataCache && (now - publicDataCacheTime < CACHE_TTL)) {

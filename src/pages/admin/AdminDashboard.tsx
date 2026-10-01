@@ -10,7 +10,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 
 export const AdminDashboard: React.FC = () => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'CONTRIBUTIONS' | 'WELFARE' | 'OFFICE_BEARERS' | 'NOTICES' | 'EVENTS' | 'SETTINGS' | 'AUDIT'>('MEMBERS');
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'CONTRIBUTIONS' | 'WELFARE' | 'OFFICE_BEARERS' | 'NOTICES' | 'EVENTS' | 'SETTINGS' | 'AUDIT' | 'GRIEVANCES'>('MEMBERS');
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // State data
   const [members, setMembers] = useState<Member[]>([]);
@@ -227,6 +228,8 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error("Error loading admin data:", error);
+    } finally {
+      setIsLoadingData(false);
     }
   };
 
@@ -1012,8 +1015,15 @@ export const AdminDashboard: React.FC = () => {
         })}
       </div>
 
-      {/* TAB 1: MEMBER VERIFICATION QUEUE */}
-      {activeTab === 'MEMBERS' && (
+      {isLoadingData ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-900 border-t-amber-400 rounded-full animate-spin"></div>
+          <p className="text-sm font-bold text-slate-600">Loading comprehensive association data...</p>
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: MEMBER VERIFICATION QUEUE */}
+          {activeTab === 'MEMBERS' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4">
             <div>
@@ -2022,6 +2032,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+      </>)}
 
       {/* MODAL: PUBLISH NOTICE */}
       {isNoticeModalOpen && (
