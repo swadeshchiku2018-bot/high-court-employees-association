@@ -91,6 +91,15 @@ app.get("/api/admin/initial-data", async (req, res) => {
   }
 });
 
+// --- CACHE INVALIDATION MIDDLEWARE ---
+app.use((req, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    publicDataCache = null;
+    publicDataCacheTime = 0;
+  }
+  next();
+});
+
 // --- SETTINGS & CMS ---
 app.get("/api/settings", async (req, res) => {
   try {

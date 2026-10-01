@@ -21,8 +21,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch all public data instantly using the aggregated endpoint
-        const res = await fetch('/api/public/initial-data');
+        const [res, gossipRes] = await Promise.all([
+          fetch('/api/public/initial-data'),
+          fetch('/api/gossip')
+        ]);
+
         if (res.ok) {
           const data = await res.json();
           if (data.settings) setSettings(data.settings);
@@ -31,7 +34,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
           if (data.events) setEvents(data.events);
           if (data.gallery) setGallery(data.gallery);
         }
-        const gossipRes = await fetch('/api/gossip');
+        
         if (gossipRes.ok) {
           const gossipData = await gossipRes.json();
           setGossipPosts(gossipData);
@@ -338,7 +341,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
           </div>
 
           <div className="space-y-3">
-            {notices.slice(0, 4).map((notice) => (
+            {notices.length > 0 ? notices.slice(0, 4).map((notice) => (
               <a
                 key={notice.id}
                 href={notice.attachmentUrl ? `/api/notices/${notice.id}/pdf` : `/notice/${notice.id}`}
@@ -367,7 +370,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                   </span>
                 </div>
               </a>
-            ))}
+            )) : (
+              <div className="w-full h-32 flex items-center justify-center text-sm text-slate-400 bg-white rounded-xl border border-slate-200">
+                No recent notices or circulars.
+              </div>
+            )}
           </div>
         </div>
 
@@ -473,7 +480,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
           </div>
 
           <div className="space-y-3">
-            {events.slice(0, 3).map((evt) => (
+            {events.length > 0 ? events.slice(0, 3).map((evt) => (
               <div
                 key={evt.id}
                 className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex items-center gap-4"
@@ -500,7 +507,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="w-full h-32 flex items-center justify-center text-sm text-slate-400 bg-white rounded-xl border border-slate-200">
+                No upcoming events scheduled.
+              </div>
+            )}
           </div>
         </div>
       </section>

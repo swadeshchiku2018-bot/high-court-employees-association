@@ -2156,6 +2156,54 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
+                <label className="block font-bold text-slate-700 mb-1">Event Photo / Banner</label>
+                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50">
+                  {eventForm.image ? (
+                    <div className="flex items-center gap-4">
+                      <img src={eventForm.image} alt="Event Preview" className="w-16 h-16 object-cover rounded shadow-sm border border-slate-200" />
+                      <button
+                        type="button"
+                        onClick={() => setEventForm({ ...eventForm, image: '' })}
+                        className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs rounded border border-rose-200"
+                      >
+                        Remove Photo
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        id="event-photo-upload"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                            alert("Event photo must be less than 2MB.");
+                            e.target.value = '';
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setEventForm({ ...eventForm, image: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                      <label
+                        htmlFor="event-photo-upload"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 text-blue-800 hover:bg-blue-50 font-bold rounded cursor-pointer text-xs"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Upload Event Photo</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label className="block font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={3}

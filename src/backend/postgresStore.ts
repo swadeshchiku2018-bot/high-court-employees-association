@@ -964,7 +964,7 @@ export class PostgresStore {
       category: r.category,
       description: r.description || '',
       content: r.content,
-      attachmentUrl: r.attachment_url || undefined,
+      attachmentUrl: r.attachment_url ? 'true' : undefined,
       date: r.date,
       publishedBy: r.published_by,
       visibility: r.visibility,
