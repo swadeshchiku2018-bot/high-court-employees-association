@@ -203,3 +203,24 @@ export interface AppNotification {
   type: 'APPROVAL' | 'CONTRIBUTION' | 'WELFARE' | 'NOTICE' | 'GENERAL';
   link?: string;
 }
+
+export interface GossipComment {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface GossipPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  likes: number;
+  dislikes: number;
+  shares: number;
+  createdAt: string;
+  comments: GossipComment[];
+}

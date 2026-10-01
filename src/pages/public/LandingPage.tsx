@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AssociationSettings, OfficeBearer, Notice, EventItem, GalleryItem } from '../../types';
-import { Shield, Users, Award, HeartHandshake, Calendar, FileText, ArrowRight, CheckCircle2, ChevronRight, Download, Sparkles, MapPin, Phone, Mail, QrCode, ExternalLink, Megaphone } from 'lucide-react';
+import { Shield, Users, Award, HeartHandshake, Calendar, FileText, ArrowRight, CheckCircle2, ChevronRight, ChevronLeft, Download, Sparkles, MapPin, Phone, Mail, QrCode, ExternalLink, Megaphone, MessageSquare } from 'lucide-react';
+import { GossipCard } from '../../components/common/GossipCard';
 
 interface LandingPageProps {
   onNavigate: (route: string) => void;
@@ -13,7 +14,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
   const [notices, setNotices] = useState<Notice[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [gossipPosts, setGossipPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const gossipScrollRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,6 +30,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
           if (data.notices) setNotices(data.notices);
           if (data.events) setEvents(data.events);
           if (data.gallery) setGallery(data.gallery);
+        }
+        const gossipRes = await fetch('/api/gossip');
+        if (gossipRes.ok) {
+          const gossipData = await gossipRes.json();
+          setGossipPosts(gossipData);
         }
       } catch (e) {
         console.error("Landing data load error:", e);
@@ -312,10 +320,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
         </div>
       </section>
 
-      {/* 4. NOTICES & EVENTS DUAL SECTION */}
-      <section className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* 4. NOTICES, GOSSIP & EVENTS TRIPLE SECTION */}
+      <section className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Notices */}
-        <div className="lg:col-span-6 space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-900" />
@@ -363,8 +371,94 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
           </div>
         </div>
 
+        {/* Middle: Gossip / ମୋ ମନ କଥା */}
+        <div className="space-y-4 flex flex-col relative group">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" />
+              ମୋ ମନ କଥା 💭
+            </h2>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-1">
+                <button 
+                  onClick={() => {
+                    if (gossipScrollRef.current) {
+                      gossipScrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+                    }
+                  }}
+                  className="p-1 rounded-full bg-slate-100 hover:bg-purple-100 text-slate-600 hover:text-purple-700 transition-colors cursor-pointer"
+                  title="Swipe Left"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => {
+                    if (gossipScrollRef.current) {
+                      gossipScrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+                    }
+                  }}
+                  className="p-1 rounded-full bg-slate-100 hover:bg-purple-100 text-slate-600 hover:text-purple-700 transition-colors cursor-pointer"
+                  title="Swipe Right"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+              <button
+                onClick={() => onNavigate('/dashboard')}
+                className="text-xs font-bold text-purple-600 hover:underline cursor-pointer"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 font-medium italic">ମନରେ ଯାହା... କହିଦିଅ, ମନ ହାଲୁକା କର 😜</p>
+
+          <div 
+            ref={gossipScrollRef}
+            className="flex-1 overflow-x-auto flex gap-4 snap-x snap-mandatory pb-4 custom-scrollbar scroll-smooth"
+          >
+            {gossipPosts.length > 0 ? gossipPosts.map((post) => (
+              <div key={post.id} className="min-w-[85%] sm:min-w-[280px] snap-center">
+                <GossipCard 
+                  post={post}
+                  onReact={async (postId, reaction) => {
+                    await fetch(`/api/gossip/${postId}/react`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reaction })
+                    });
+                    const res = await fetch('/api/gossip');
+                    if (res.ok) setGossipPosts(await res.json());
+                  }}
+                  onComment={async (postId, content) => {
+                    const currentUserStr = localStorage.getItem('OHCEA_user');
+                    if (!currentUserStr) return;
+                    const currentUser = JSON.parse(currentUserStr);
+                    await fetch(`/api/gossip/${postId}/comment`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ authorId: currentUser.id, authorName: currentUser.name, content })
+                    });
+                    const res = await fetch('/api/gossip');
+                    if (res.ok) setGossipPosts(await res.json());
+                  }}
+                  onDelete={async (postId) => {
+                    if (!confirm('Are you sure you want to delete this post?')) return;
+                    await fetch(`/api/gossip/${postId}`, { method: 'DELETE' });
+                    setGossipPosts(prev => prev.filter(p => p.id !== postId));
+                  }}
+                />
+              </div>
+            )) : (
+              <div className="w-full h-32 flex items-center justify-center text-sm text-slate-400 bg-white rounded-xl border border-slate-200">
+                No gossip yet! Be the first to post.
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Right: Upcoming Events */}
-        <div className="lg:col-span-6 space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-900" />

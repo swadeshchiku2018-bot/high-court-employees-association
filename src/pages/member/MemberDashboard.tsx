@@ -5,13 +5,15 @@ import { IdCard } from '../../components/common/IdCard';
 import {
   User, CreditCard, HeartHandshake, Bell, Shield, Download, Plus, CheckCircle2,
   Clock, AlertCircle, FileText, Phone, MapPin, Building, Sparkles, RefreshCw,
-  KeyRound, Lock, Eye, EyeOff
+  Clock, AlertCircle, FileText, Phone, MapPin, Building, Sparkles, RefreshCw,
+  KeyRound, Lock, Eye, EyeOff, MessageSquare
 } from 'lucide-react';
+import { GossipCard } from '../../components/common/GossipCard';
 
 interface MemberDashboardProps {
   onOpenPayment: (data: { title: string; amount: number; type: 'SUBSCRIPTION' | 'WELFARE_DONATION'; monthYear?: string }) => void;
   onOpenReceipt: (contribution: Contribution) => void;
-  initialTab?: 'ID_CARD' | 'CONTRIBUTIONS' | 'WELFARE' | 'PROFILE' | 'SECURITY' | 'ALERTS';
+  initialTab?: 'ID_CARD' | 'CONTRIBUTIONS' | 'WELFARE' | 'PROFILE' | 'SECURITY' | 'ALERTS' | 'GOSSIP';
 }
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({
@@ -20,12 +22,16 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   initialTab = 'ID_CARD'
 }) => {
   const { currentUser, refreshUserData } = useAuth();
-  const [activeTab, setActiveTab] = useState<'ID_CARD' | 'CONTRIBUTIONS' | 'WELFARE' | 'PROFILE' | 'SECURITY' | 'ALERTS'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'ID_CARD' | 'CONTRIBUTIONS' | 'WELFARE' | 'PROFILE' | 'SECURITY' | 'ALERTS' | 'GOSSIP'>(initialTab);
 
   // Local state for contributions & welfare applications
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [welfareGrants, setWelfareGrants] = useState<WelfareGrant[]>([]);
   const [isWelfareModalOpen, setIsWelfareModalOpen] = useState(false);
+
+  // Gossip
+  const [gossipPosts, setGossipPosts] = useState<any[]>([]);
+  const [gossipContent, setGossipContent] = useState('');
 
   // Form for New Welfare Grant
   const [welfareForm, setWelfareForm] = useState({
@@ -70,6 +76,12 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       fetch(`/api/members/${currentUser.id}/welfare`)
         .then(r => r.json())
         .then(setWelfareGrants)
+        .catch(console.error);
+
+      // Fetch gossip
+      fetch('/api/gossip')
+        .then(r => r.json())
+        .then(setGossipPosts)
         .catch(console.error);
 
       setProfileForm({
@@ -137,6 +149,27 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       setCredentialsMsg({ text: err.message || "Network error", isError: true });
     } finally {
       setIsUpdatingCredentials(false);
+    }
+  };
+
+  const handlePostGossip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gossipContent.trim()) return;
+    try {
+      await fetch('/api/gossip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          authorId: currentUser.id,
+          authorName: currentUser.name,
+          content: gossipContent
+        })
+      });
+      setGossipContent('');
+      const res = await fetch('/api/gossip');
+      if (res.ok) setGossipPosts(await res.json());
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -257,6 +290,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           { id: 'ID_CARD', label: 'Digital ID Card', icon: Shield },
           { id: 'CONTRIBUTIONS', label: 'Monthly Contributions', icon: CreditCard },
           { id: 'WELFARE', label: 'Welfare Fund Grants', icon: HeartHandshake },
+          { id: 'GOSSIP', label: 'ମୋ ମନ କଥା 💭', icon: MessageSquare },
           { id: 'PROFILE', label: 'Service Profile', icon: User },
           { id: 'SECURITY', label: 'User ID & Password', icon: KeyRound },
           { id: 'ALERTS', label: 'Notifications Center', icon: Bell }
@@ -424,6 +458,79 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                     <span className="font-mono font-bold text-blue-900">Ref: {wg.id}</span>
                   </div>
                 </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: GOSSIP */}
+      {activeTab === 'GOSSIP' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
+              <MessageSquare className="w-6 h-6 text-purple-300" />
+              ମୋ ମନ କଥା 💭
+            </h2>
+            <p className="text-purple-200 text-sm italic mb-4">ମନରେ ଯାହା... କହିଦିଅ, ମନ ହାଲୁକା କର 😜</p>
+            
+            <form onSubmit={handlePostGossip} className="bg-white/10 rounded-xl p-3 border border-white/20">
+              <textarea
+                value={gossipContent}
+                onChange={e => setGossipContent(e.target.value)}
+                placeholder="What's on your mind? Share with the community..."
+                className="w-full bg-transparent text-white placeholder-purple-200 border-none outline-none resize-none min-h-[80px] text-sm"
+              />
+              <div className="flex justify-end pt-2 border-t border-white/10 mt-2">
+                <button
+                  type="submit"
+                  disabled={!gossipContent.trim()}
+                  className="px-6 py-2 bg-purple-500 hover:bg-purple-400 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                >
+                  Post to Community
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="max-w-2xl mx-auto space-y-4">
+            {gossipPosts.length === 0 ? (
+              <div className="text-center p-8 bg-white rounded-xl border border-slate-200 text-slate-500 text-sm">
+                No posts yet. Start the conversation!
+              </div>
+            ) : (
+              gossipPosts.map(post => (
+                <GossipCard
+                  key={post.id}
+                  post={post}
+                  onReact={async (postId, reaction) => {
+                    await fetch(`/api/gossip/${postId}/react`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reaction })
+                    });
+                    const res = await fetch('/api/gossip');
+                    if (res.ok) setGossipPosts(await res.json());
+                  }}
+                  onComment={async (postId, content) => {
+                    await fetch(`/api/gossip/${postId}/comment`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ authorId: currentUser.id, authorName: currentUser.name, content })
+                    });
+                    const res = await fetch('/api/gossip');
+                    if (res.ok) setGossipPosts(await res.json());
+                  }}
+                  onDelete={
+                    (currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'PRESIDENT' || currentUser.role === 'SECRETARY')
+                      ? async (postId) => {
+                          if (!confirm('Are you sure you want to delete this post?')) return;
+                          await fetch(`/api/gossip/${postId}`, { method: 'DELETE' });
+                          setGossipPosts(prev => prev.filter(p => p.id !== postId));
+                        }
+                      : undefined
+                  }
+                />
               ))
             )}
           </div>

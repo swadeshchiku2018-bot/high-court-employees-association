@@ -213,6 +213,26 @@ export async function createTables(): Promise<void> {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS gossip_posts (
+      id TEXT PRIMARY KEY,
+      author_id TEXT NOT NULL,
+      author_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      likes INT DEFAULT 0,
+      dislikes INT DEFAULT 0,
+      shares INT DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS gossip_comments (
+      id TEXT PRIMARY KEY,
+      post_id TEXT REFERENCES gossip_posts(id) ON DELETE CASCADE,
+      author_id TEXT NOT NULL,
+      author_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `);
   console.log("All tables checked/created successfully and migrations applied.");
 }

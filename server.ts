@@ -74,7 +74,7 @@ app.get("/api/public/initial-data", async (req, res) => {
 
 app.get("/api/admin/initial-data", async (req, res) => {
   try {
-    const [members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings] = await Promise.all([
+    const [members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events] = await Promise.all([
       postgresStore.getMembers(),
       postgresStore.getContributions(),
       postgresStore.getFundLedger(),
@@ -82,9 +82,10 @@ app.get("/api/admin/initial-data", async (req, res) => {
       postgresStore.getOfficeBearers(),
       postgresStore.getNotices(),
       postgresStore.getAuditLogs(),
-      postgresStore.getSettings()
+      postgresStore.getSettings(),
+      postgresStore.getEvents()
     ]);
-    res.json({ members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings });
+    res.json({ members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -633,6 +634,27 @@ app.post("/api/events", async (req, res) => {
   }
 });
 
+app.put("/api/events/:id", async (req, res) => {
+  try {
+    const event = req.body.event || req.body;
+    const actorName = req.body.actorName || "Admin";
+    const updated = await postgresStore.updateEvent(req.params.id, event, actorName);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete("/api/events/:id", async (req, res) => {
+  try {
+    const actorName = req.body.actorName || "Admin";
+    await postgresStore.deleteEvent(req.params.id, actorName);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.post("/api/events/:id/register", async (req, res) => {
   try {
     const { memberId } = req.body;
@@ -689,6 +711,55 @@ app.get("/api/audit-logs", async (req, res) => {
     res.json(logs);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- GOSSIP (ମୋ ମନ କଥା) ---
+app.get("/api/gossip", async (req, res) => {
+  try {
+    const posts = await postgresStore.getGossipPosts();
+    res.json(posts);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/gossip", async (req, res) => {
+  try {
+    const { authorId, authorName, content } = req.body;
+    const post = await postgresStore.createGossipPost(authorId, authorName, content);
+    res.status(201).json(post);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete("/api/gossip/:id", async (req, res) => {
+  try {
+    await postgresStore.deleteGossipPost(req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/gossip/:id/react", async (req, res) => {
+  try {
+    const { reaction } = req.body;
+    await postgresStore.reactToGossipPost(req.params.id, reaction);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/gossip/:id/comment", async (req, res) => {
+  try {
+    const { authorId, authorName, content } = req.body;
+    const comment = await postgresStore.addGossipComment(req.params.id, authorId, authorName, content);
+    res.status(201).json(comment);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
   }
 });
 

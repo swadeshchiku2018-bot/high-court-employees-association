@@ -1076,6 +1076,63 @@ export class PostgresStore {
     };
   }
 
+  async updateEvent(id: string, event: Partial<EventItem>, actorName: string = "Admin"): Promise<EventItem> {
+    const existingRows = await query('SELECT * FROM events WHERE id = $1', [id]);
+    if (existingRows.length === 0) throw new Error("Event not found");
+    const current = existingRows[0];
+
+    const title = event.title !== undefined ? event.title : current.title;
+    const date = event.date !== undefined ? event.date : current.date;
+    const time = event.time !== undefined ? event.time : current.time;
+    const venue = event.venue !== undefined ? event.venue : current.venue;
+    const description = event.description !== undefined ? event.description : current.description;
+    const image = event.image !== undefined ? event.image : current.image;
+    const registrationStatus = event.registrationStatus !== undefined ? event.registrationStatus : current.registration_status;
+    const maxCapacity = event.maxCapacity !== undefined ? event.maxCapacity : current.max_capacity;
+    const registrationDeadline = event.registrationDeadline !== undefined ? event.registrationDeadline : current.registration_deadline;
+    const category = event.category !== undefined ? event.category : current.category;
+
+    await query(`
+      UPDATE events SET
+        title = $1, date = $2, time = $3, venue = $4, description = $5,
+        image = $6, registration_status = $7, max_capacity = $8,
+        registration_deadline = $9, category = $10
+      WHERE id = $11
+    `, [
+      title, date, time, venue, description, image,
+      registrationStatus, maxCapacity, registrationDeadline, category, id
+    ]);
+
+    await this.addAuditLog(actorName, "SECRETARY", "EVENT_UPDATED", `Updated event '${title}'`);
+    
+    const rows = await query('SELECT * FROM events WHERE id = $1', [id]);
+    const r = rows[0];
+    return {
+      id: r.id,
+      title: r.title,
+      date: r.date,
+      time: r.time,
+      venue: r.venue,
+      description: r.description,
+      image: r.image,
+      registrationStatus: r.registration_status,
+      totalRegistered: r.total_registered,
+      maxCapacity: r.max_capacity,
+      registrationDeadline: r.registration_deadline,
+      category: r.category
+    };
+  }
+
+  async deleteEvent(id: string, actorName: string = "Admin"): Promise<boolean> {
+    const existingRows = await query('SELECT title FROM events WHERE id = $1', [id]);
+    if (existingRows.length === 0) throw new Error("Event not found");
+    const title = existingRows[0].title;
+
+    await query('DELETE FROM events WHERE id = $1', [id]);
+    await this.addAuditLog(actorName, "SECRETARY", "EVENT_DELETED", `Deleted event '${title}'`);
+    return true;
+  }
+
   async registerForEvent(eventId: string, memberId: string): Promise<EventRegistration> {
     const eventRows = await query('SELECT * FROM events WHERE id = $1', [eventId]);
     if (eventRows.length === 0) throw new Error("Event not found");
@@ -1209,6 +1266,69 @@ export class PostgresStore {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (id) DO NOTHING
     `, [id, userId || null, userName, role, action, details, timestamp, ipAddress || '127.0.0.1']);
+  }
+
+  // --- GOSSIP (ମୋ ମନ କଥା) ---
+  async getGossipPosts(): Promise<any[]> {
+    const postsRes = await query('SELECT * FROM gossip_posts ORDER BY created_at DESC');
+    const commentsRes = await query('SELECT * FROM gossip_comments ORDER BY created_at ASC');
+    
+    return postsRes.map((p: any) => {
+      const comments = commentsRes
+        .filter((c: any) => c.post_id === p.id)
+        .map((c: any) => ({
+          id: c.id,
+          postId: c.post_id,
+          authorId: c.author_id,
+          authorName: c.author_name,
+          content: c.content,
+          createdAt: c.created_at
+        }));
+        
+      return {
+        id: p.id,
+        authorId: p.author_id,
+        authorName: p.author_name,
+        content: p.content,
+        likes: p.likes,
+        dislikes: p.dislikes,
+        shares: p.shares,
+        createdAt: p.created_at,
+        comments
+      };
+    });
+  }
+
+  async createGossipPost(authorId: string, authorName: string, content: string): Promise<any> {
+    const id = `gossip-${Date.now()}`;
+    await query(`
+      INSERT INTO gossip_posts (id, author_id, author_name, content)
+      VALUES ($1, $2, $3, $4)
+    `, [id, authorId, authorName, content]);
+    return { id, authorId, authorName, content, likes: 0, dislikes: 0, shares: 0, comments: [], createdAt: new Date().toISOString() };
+  }
+
+  async deleteGossipPost(postId: string): Promise<void> {
+    await query('DELETE FROM gossip_posts WHERE id = $1', [postId]);
+  }
+
+  async reactToGossipPost(postId: string, reactionType: 'like' | 'dislike' | 'share'): Promise<void> {
+    if (reactionType === 'like') {
+      await query('UPDATE gossip_posts SET likes = likes + 1 WHERE id = $1', [postId]);
+    } else if (reactionType === 'dislike') {
+      await query('UPDATE gossip_posts SET dislikes = dislikes + 1 WHERE id = $1', [postId]);
+    } else if (reactionType === 'share') {
+      await query('UPDATE gossip_posts SET shares = shares + 1 WHERE id = $1', [postId]);
+    }
+  }
+
+  async addGossipComment(postId: string, authorId: string, authorName: string, content: string): Promise<any> {
+    const id = `comment-${Date.now()}`;
+    await query(`
+      INSERT INTO gossip_comments (id, post_id, author_id, author_name, content)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [id, postId, authorId, authorName, content]);
+    return { id, postId, authorId, authorName, content, createdAt: new Date().toISOString() };
   }
 }
 

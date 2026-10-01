@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Member, Contribution, WelfareGrant, Notice, AuditLog, AssociationSettings, FundTransaction, OfficeBearer } from '../../types';
-import {
+import { Member, Contribution, WelfareGrant, Notice, AuditLog, AssociationSettings, FundTransaction, OfficeBearer, EventItem } from '../../types';import {
   Users, CreditCard, HeartHandshake, FileText, Settings, Activity, Shield, CheckCircle2,
   XCircle, Search, Plus, Filter, Download, ArrowUpRight, ArrowDownRight, DollarSign, PieChart as PieChartIcon,
   Sparkles, RefreshCw, Eye, EyeOff, Pencil, Trash2, AlertTriangle, X, UserPlus, KeyRound, Wallet,
@@ -11,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 
 export const AdminDashboard: React.FC = () => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'CONTRIBUTIONS' | 'WELFARE' | 'OFFICE_BEARERS' | 'NOTICES' | 'SETTINGS' | 'AUDIT'>('MEMBERS');
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'CONTRIBUTIONS' | 'WELFARE' | 'OFFICE_BEARERS' | 'NOTICES' | 'EVENTS' | 'SETTINGS' | 'AUDIT'>('MEMBERS');
 
   // State data
   const [members, setMembers] = useState<Member[]>([]);
@@ -46,6 +45,7 @@ export const AdminDashboard: React.FC = () => {
   const [ledgerView, setLedgerView] = useState<'CONTRIBUTIONS' | 'CORPUS'>('CONTRIBUTIONS');
   const [welfareGrants, setWelfareGrants] = useState<WelfareGrant[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [settings, setSettings] = useState<AssociationSettings | null>(null);
 
@@ -148,7 +148,6 @@ export const AdminDashboard: React.FC = () => {
     status: 'ACTIVE' as Member['status']
   });
 
-  // Modal forms
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [noticeForm, setNoticeForm] = useState({
     title: '',
@@ -159,6 +158,21 @@ export const AdminDashboard: React.FC = () => {
     attachmentUrl: '',
     isImportant: false
   });
+
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [eventForm, setEventForm] = useState<Partial<EventItem>>({
+    title: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '10:00 AM',
+    venue: '',
+    description: '',
+    category: 'SPORTS',
+    maxCapacity: 100,
+    registrationStatus: 'OPEN',
+    registrationDeadline: new Date().toISOString().split('T')[0]
+  });
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+
 
   const [isManualPaymentOpen, setIsManualPaymentOpen] = useState(false);
   const [manualPaymentForm, setManualPaymentForm] = useState({
@@ -198,6 +212,7 @@ export const AdminDashboard: React.FC = () => {
         if (data.welfareGrants) setWelfareGrants(data.welfareGrants);
         if (data.officeBearers) setOfficeBearers(data.officeBearers);
         if (data.notices) setNotices(data.notices);
+        if (data.events) setEvents(data.events);
         if (data.auditLogs) setAuditLogs(data.auditLogs);
         if (data.settings) {
           setSettings(data.settings);
@@ -667,6 +682,73 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Handler: Save Event (Create or Update)
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!editingEventId;
+      const url = isEdit ? `/api/events/${editingEventId}` : '/api/events';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: eventForm,
+          actorName: currentUser?.name || 'Admin'
+        })
+      });
+
+      if (res.ok) {
+        setIsEventModalOpen(false);
+        setEventForm({
+          title: '',
+          date: new Date().toISOString().split('T')[0],
+          time: '10:00 AM',
+          venue: '',
+          description: '',
+          category: 'SPORTS',
+          maxCapacity: 100,
+          registrationStatus: 'OPEN',
+          registrationDeadline: new Date().toISOString().split('T')[0]
+        });
+        setEditingEventId(null);
+        loadAllData();
+        alert(isEdit ? "Event updated successfully!" : "Event created successfully!");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to save event.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error saving event.");
+    }
+  };
+
+  // Handler: Delete Event
+  const handleDeleteEvent = async (eventId: string, title: string) => {
+    if (!window.confirm(`Are you sure you want to delete event: "${title}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorName: currentUser?.name || 'Admin' })
+      });
+      if (res.ok) {
+        setEvents(prev => prev.filter(ev => ev.id !== eventId));
+        alert("Event deleted successfully.");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete event.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting event.");
+    }
+  };
+
   const printReceipt = (contrib: any) => {
     const receiptHTML = `
       <html>
@@ -878,6 +960,7 @@ export const AdminDashboard: React.FC = () => {
           { id: 'WELFARE', label: 'Welfare Applications', icon: HeartHandshake },
           { id: 'OFFICE_BEARERS', label: 'Executive Body & Bearers', icon: Award },
           { id: 'NOTICES', label: 'Circulars & Notices', icon: FileText },
+          { id: 'EVENTS', label: 'Manage Events', icon: Calendar },
           { id: 'SETTINGS', label: 'Association CMS Settings', icon: Settings },
           { id: 'AUDIT', label: 'Analytics & Audit Logs', icon: Activity }
         ].map((tab) => {
@@ -1514,6 +1597,78 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* TAB: EVENTS MANAGER */}
+      {activeTab === 'EVENTS' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Association Events Manager</h2>
+              <p className="text-xs text-slate-500">Create, update, or delete upcoming association events.</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingEventId(null);
+                setEventForm({
+                  title: '', date: new Date().toISOString().split('T')[0], time: '10:00 AM', venue: '',
+                  description: '', category: 'SPORTS', maxCapacity: 100, registrationStatus: 'OPEN',
+                  registrationDeadline: new Date().toISOString().split('T')[0]
+                });
+                setIsEventModalOpen(true);
+              }}
+              className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4 text-amber-400" />
+              Create New Event
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {events.length === 0 ? (
+              <p className="text-center text-slate-500 text-sm py-8">No events found.</p>
+            ) : (
+              events.map((ev) => (
+                <div key={ev.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 uppercase">
+                        {ev.category}
+                      </span>
+                      <span className="text-slate-500 font-mono">{ev.date} at {ev.time}</span>
+                    </div>
+                    <h3 className="font-bold text-slate-900 text-sm mt-1">{ev.title}</h3>
+                    <p className="text-slate-600 line-clamp-1">{ev.venue}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-2.5 py-1 rounded font-bold uppercase text-[10px] ${ev.registrationStatus === 'OPEN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {ev.registrationStatus}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setEditingEventId(ev.id);
+                        setEventForm(ev);
+                        setIsEventModalOpen(true);
+                      }}
+                      className="p-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 font-bold text-[11px]"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-blue-700" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id, ev.title)}
+                      className="p-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 font-bold text-[11px]"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* TAB 5: CMS & SETTINGS */}
       {activeTab === 'SETTINGS' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6 text-xs">
@@ -1916,6 +2071,140 @@ export const AdminDashboard: React.FC = () => {
                   className="px-6 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs cursor-pointer"
                 >
                   Publish Notice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE / EDIT EVENT */}
+      {isEventModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center border-b border-slate-800">
+              <h3 className="font-bold text-base text-amber-300">
+                {editingEventId ? 'Edit Association Event' : 'Create New Event'}
+              </h3>
+              <button onClick={() => setIsEventModalOpen(false)} className="text-slate-400 hover:text-white font-bold cursor-pointer">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEvent} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Event Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Annual Sports Meet 2026"
+                  value={eventForm.title}
+                  onChange={e => setEventForm({ ...eventForm, title: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={eventForm.date}
+                    onChange={e => setEventForm({ ...eventForm, date: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Time *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 10:00 AM"
+                    value={eventForm.time}
+                    onChange={e => setEventForm({ ...eventForm, time: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Venue *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. High Court Ground"
+                  value={eventForm.venue}
+                  onChange={e => setEventForm({ ...eventForm, venue: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category</label>
+                <select
+                  value={eventForm.category}
+                  onChange={e => setEventForm({ ...eventForm, category: e.target.value as any })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                >
+                  <option value="SPORTS">SPORTS</option>
+                  <option value="CULTURAL">CULTURAL</option>
+                  <option value="MEETING">MEETING</option>
+                  <option value="WELFARE">WELFARE</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Event details..."
+                  value={eventForm.description}
+                  onChange={e => setEventForm({ ...eventForm, description: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={eventForm.registrationStatus}
+                    onChange={e => setEventForm({ ...eventForm, registrationStatus: e.target.value as any })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                  >
+                    <option value="OPEN">OPEN</option>
+                    <option value="CLOSED">CLOSED</option>
+                    <option value="FULL">FULL</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Registration Deadline</label>
+                  <input
+                    type="date"
+                    required
+                    value={eventForm.registrationDeadline}
+                    onChange={e => setEventForm({ ...eventForm, registrationDeadline: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEventModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  {editingEventId ? 'Update Event' : 'Create Event'}
                 </button>
               </div>
             </form>
