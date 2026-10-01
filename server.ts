@@ -11,7 +11,26 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // --- HEALTH & STATUS ---
 import { pool } from './src/backend/db.js';
-import { initDb, seedAdminAccount } from './src/backend/initDb.js';
+
+// Lazy DB initialization for Vercel serverless (runs once per cold start)
+let dbInitialized = false;
+async function ensureDbInitialized() {
+  if (dbInitialized) return;
+  try {
+    await initDb();
+    await seedAdminAccount();
+    console.log("DB tables verified and admin seeded.");
+  } catch (err) {
+    console.error("DB init warning:", err);
+  }
+  dbInitialized = true;
+}
+
+// Run DB init before every request (no-op after first call)
+app.use(async (req, res, next) => {
+  await ensureDbInitialized();
+  next();
+});
 
 app.get("/api/db-test", async (req, res) => {
   try {
@@ -79,17 +98,22 @@ app.get("/api/public/initial-data", async (req, res) => {
 
 app.get("/api/admin/initial-data", async (req, res) => {
   try {
+    // Fetch each piece of data independently so one failure doesn't crash everything
+    const safeQuery = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+      try { return await fn(); } catch (e) { console.error('Admin data query failed:', e); return fallback; }
+    };
+
     const [members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events, grievances] = await Promise.all([
-      postgresStore.getMembers(),
-      postgresStore.getContributions(),
-      postgresStore.getFundLedger(),
-      postgresStore.getWelfareGrants(),
-      postgresStore.getOfficeBearers(),
-      postgresStore.getNotices(),
-      postgresStore.getAuditLogs(),
-      postgresStore.getSettings(),
-      postgresStore.getEvents(),
-      postgresStore.getGrievances()
+      safeQuery(() => postgresStore.getMembers(), []),
+      safeQuery(() => postgresStore.getContributions(), []),
+      safeQuery(() => postgresStore.getFundLedger(), []),
+      safeQuery(() => postgresStore.getWelfareGrants(), []),
+      safeQuery(() => postgresStore.getOfficeBearers(), []),
+      safeQuery(() => postgresStore.getNotices(), []),
+      safeQuery(() => postgresStore.getAuditLogs(), []),
+      safeQuery(() => postgresStore.getSettings(), null as any),
+      safeQuery(() => postgresStore.getEvents(), []),
+      safeQuery(() => postgresStore.getGrievances(), [])
     ]);
     res.json({ members, contributions, fundTransactions, welfareGrants, officeBearers, notices, auditLogs, settings, events, grievances });
   } catch (err: any) {
@@ -877,6 +901,6 @@ if (!process.env.VERCEL) {
     console.error("Failed to start server:", err);
   });
 } else {
-  // DB initialization is skipped on Vercel cold starts.
-  console.log("Vercel environment detected. Skipping top-level DB init.");
+  // On Vercel, DB init happens lazily via the middleware above
+  console.log("Vercel environment detected. DB init will run on first request.");
 }
