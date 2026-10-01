@@ -47,8 +47,16 @@ app.get("/api/health", async (req, res) => {
 });
 
 // --- AGGREGATED ENDPOINTS FOR FAST PAGE LOAD ---
+let publicDataCache: any = null;
+let publicDataCacheTime = 0;
+const CACHE_TTL = 60000; // 1 minute
+
 app.get("/api/public/initial-data", async (req, res) => {
   try {
+    const now = Date.now();
+    if (publicDataCache && (now - publicDataCacheTime < CACHE_TTL)) {
+      return res.json(publicDataCache);
+    }
     const [settings, officeBearers, notices, events, gallery] = await Promise.all([
       postgresStore.getSettings(),
       postgresStore.getOfficeBearers(),
@@ -56,7 +64,9 @@ app.get("/api/public/initial-data", async (req, res) => {
       postgresStore.getEvents(),
       postgresStore.getGallery()
     ]);
-    res.json({ settings, officeBearers, notices, events, gallery });
+    publicDataCache = { settings, officeBearers, notices, events, gallery };
+    publicDataCacheTime = now;
+    res.json(publicDataCache);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

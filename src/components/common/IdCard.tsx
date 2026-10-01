@@ -95,6 +95,15 @@ export const IdCard: React.FC<IdCardProps> = ({ member, settings }) => {
           >
             {/* ================= FRONT OF ID CARD ================= */}
             <div className="absolute inset-0 w-full h-full rounded-2xl bg-white shadow-xl overflow-hidden [backface-visibility:hidden] flex flex-col border border-slate-300 id-card-front">
+              {/* Sample Watermark for Unapproved Members */}
+              {member.status !== 'ACTIVE' && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <div className="transform -rotate-45 text-red-500/30 text-8xl font-black tracking-widest border-4 border-red-500/30 px-8 py-4 rounded-xl uppercase">
+                    SAMPLE
+                  </div>
+                </div>
+              )}
+
               {/* Top Navy Border */}
               <div className="h-6 bg-[#002855] w-full shrink-0" />
 
@@ -227,6 +236,15 @@ export const IdCard: React.FC<IdCardProps> = ({ member, settings }) => {
 
             {/* ================= BACK OF ID CARD ================= */}
             <div className="absolute inset-0 w-full h-full rounded-2xl bg-white shadow-xl overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col border border-slate-300 id-card-back">
+              {/* Sample Watermark for Unapproved Members */}
+              {member.status !== 'ACTIVE' && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <div className="transform -rotate-45 text-red-500/30 text-8xl font-black tracking-widest border-4 border-red-500/30 px-8 py-4 rounded-xl uppercase">
+                    SAMPLE
+                  </div>
+                </div>
+              )}
+
               {/* Top Navy Header */}
               <div className="h-10 bg-[#002855] w-full shrink-0 flex items-center justify-center px-6">
                 <div className="h-px bg-white/40 flex-1"></div>

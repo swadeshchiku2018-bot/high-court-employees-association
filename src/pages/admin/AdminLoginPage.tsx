@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Shield, KeyRound, ArrowRight, User, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface AdminLoginPageProps {
   onNavigate: (route: string) => void;
 }
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) => {
+  const { setCurrentUser } = useAuth();
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,8 +37,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onNavigate }) =>
       // Store admin user in localStorage (same key as normal users)
       localStorage.setItem('OHCEA_user', JSON.stringify(data.user));
       localStorage.setItem('OHCEA_token', data.token);
-      // Force page reload so AuthContext picks up the new user
-      window.location.href = '/admin/dashboard';
+      setCurrentUser(data.user);
+      onNavigate('/admin/dashboard');
     } catch {
       setError('Network error. Please try again.');
     }
