@@ -670,7 +670,11 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(`/api/welfare/${grantId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, amountSanctioned })
+        body: JSON.stringify({
+          status,
+          amountSanctioned,
+          actorName: currentUser?.name || 'Treasurer'
+        })
       });
       if (res.ok) {
         loadAllData();

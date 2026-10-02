@@ -6,19 +6,21 @@ interface VerifyPageProps {
 }
 
 export const VerifyPage: React.FC<VerifyPageProps> = ({ initialMemberId }) => {
-  const [memberIdInput, setMemberIdInput] = useState(initialMemberId || '');
+  const cleanInitialId = (initialMemberId || '').replace(/^member\//i, '').trim();
+  const [memberIdInput, setMemberIdInput] = useState(cleanInitialId);
   const [result, setResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const performVerification = async (idToVerify: string) => {
-    if (!idToVerify.trim()) return;
+    const cleanId = idToVerify.trim().replace(/^member\//i, '');
+    if (!cleanId) return;
     setIsLoading(true);
     setError('');
     setResult(null);
 
     try {
-      const res = await fetch(`/api/verify/member/${encodeURIComponent(idToVerify.trim())}`);
+      const res = await fetch(`/api/verify/member/${encodeURIComponent(cleanId)}`);
       if (!res.ok) {
         throw new Error("No active record found for this Membership ID.");
       }

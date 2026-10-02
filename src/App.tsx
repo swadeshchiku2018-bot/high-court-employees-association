@@ -35,7 +35,9 @@ const getInitialRouteState = () => {
     return { route: '/notice-viewer', noticeId: target.replace('/notices/', ''), verifyId: '' };
   }
   if (target.startsWith('/verify/')) {
-    return { route: '/verify', noticeId: 'not-1', verifyId: target.replace('/verify/', '') };
+    const rawId = target.replace('/verify/', '');
+    const cleanId = rawId.replace(/^member\//i, '');
+    return { route: '/verify', noticeId: 'not-1', verifyId: cleanId };
   }
   if (target) {
     return { route: target, noticeId: 'not-1', verifyId: '' };
@@ -96,8 +98,9 @@ const MainApp: React.FC = () => {
       setActiveNoticeId(id);
       setCurrentRoute('/notice-viewer');
     } else if (route.startsWith('/verify/')) {
-      const id = route.replace('/verify/', '');
-      setVerifyIdParam(id);
+      const rawId = route.replace('/verify/', '');
+      const cleanId = rawId.replace(/^member\//i, '');
+      setVerifyIdParam(cleanId);
       setCurrentRoute('/verify');
     } else {
       setVerifyIdParam('');
@@ -152,7 +155,16 @@ const MainApp: React.FC = () => {
           currentRoute.startsWith('/member')) && (
           currentUser ? (
             <MemberDashboard
-              initialTab={(currentRoute === '/contributions' || currentRoute === '/member/contributions') ? 'CONTRIBUTIONS' : 'ID_CARD'}
+              initialTab={
+                (currentRoute === '/contributions' || currentRoute === '/member/contributions') ? 'CONTRIBUTIONS' :
+                currentRoute === '/member/welfare' ? 'WELFARE' :
+                currentRoute === '/member/gossip' ? 'GOSSIP' :
+                (currentRoute === '/member/grievance' || currentRoute === '/member/grievances') ? 'GRIEVANCE' :
+                currentRoute === '/member/profile' ? 'PROFILE' :
+                currentRoute === '/member/security' ? 'SECURITY' :
+                (currentRoute === '/member/alerts' || currentRoute === '/member/notifications') ? 'ALERTS' :
+                'ID_CARD'
+              }
               onOpenPayment={handleOpenPayment}
               onOpenReceipt={(c) => setActiveReceipt(c)}
             />

@@ -13,7 +13,7 @@ export const IdCard: React.FC<IdCardProps> = ({ member, settings }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const printRef = useRef<HTMLDivElement>(null);
 
-  const verificationUrl = `${window.location.origin}/verify/member/${member.membershipId}`;
+  const verificationUrl = `${window.location.origin}/verify/${member.membershipId}`;
 
   useEffect(() => {
     // Generate QR with no margin and high contrast

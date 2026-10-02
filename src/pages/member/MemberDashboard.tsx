@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Member, Contribution, WelfareGrant } from '../../types';
 import { IdCard } from '../../components/common/IdCard';
 import {
   User, CreditCard, HeartHandshake, Bell, Shield, Download, Plus, CheckCircle2,
   Clock, AlertCircle, FileText, Phone, MapPin, Building, Sparkles, RefreshCw,
-  KeyRound, Lock, Eye, EyeOff, MessageSquare, Upload, ExternalLink
+  KeyRound, Lock, Eye, EyeOff, MessageSquare, Upload, ExternalLink, Camera, Loader2, Trash2
 } from 'lucide-react';
 import { GossipCard } from '../../components/common/GossipCard';
 import MDEditor from '@uiw/react-md-editor';
@@ -64,6 +64,12 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
 
+  // Avatar / Photo Change
+  const [avatarMsg, setAvatarMsg] = useState<{ text: string; isError: boolean } | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   // User ID & Password Edit
   const [credentialsForm, setCredentialsForm] = useState({
     employeeCode: currentUser?.employeeCode || '',
@@ -76,30 +82,35 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   const [credentialsMsg, setCredentialsMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Sync activeTab when initialTab prop changes externally (routing)
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   useEffect(() => {
     if (currentUser) {
       // Fetch contributions
       fetch(`/api/members/${currentUser.id}/contributions`)
         .then(r => r.json())
-        .then(setContributions)
+        .then(data => setContributions(Array.isArray(data) ? data : []))
         .catch(console.error);
 
       // Fetch welfare
       fetch(`/api/members/${currentUser.id}/welfare`)
         .then(r => r.json())
-        .then(setWelfareGrants)
+        .then(data => setWelfareGrants(Array.isArray(data) ? data : []))
         .catch(console.error);
 
       // Fetch gossip
       fetch('/api/gossip')
         .then(r => r.json())
-        .then(setGossipPosts)
+        .then(data => setGossipPosts(Array.isArray(data) ? data : []))
         .catch(console.error);
 
       // Fetch grievances
       fetch(`/api/grievances/member/${currentUser.id}`)
         .then(r => r.json())
-        .then(setGrievances)
+        .then(data => setGrievances(Array.isArray(data) ? data : []))
         .catch(console.error);
 
       setProfileForm({
@@ -215,7 +226,19 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           memberId: currentUser.id,
           memberName: currentUser.name,
           membershipId: currentUser.membershipId,
-          ...welfareForm,
+          type: welfareForm.grantType || 'MEDICAL',
+          grantType: welfareForm.grantType || 'MEDICAL',
+          amountRequested: Number(welfareForm.amountRequested) || 0,
+          reason: welfareForm.reason,
+          description: welfareForm.institutionName ? `${welfareForm.institutionName}: ${welfareForm.reason}` : (welfareForm.reason || 'Welfare grant application'),
+          institutionName: welfareForm.institutionName,
+          bankDetails: {
+            accountName: currentUser.name,
+            accountNumber: '',
+            ifscCode: '',
+            bankName: ''
+          },
+          supportingDocs: ['Medical_Report_Hospital_Bill.pdf'],
           documents: ['Medical_Report_Hospital_Bill.pdf']
         })
       });
@@ -249,11 +272,60 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       if (res.ok) {
         await refreshUserData();
         setProfileMsg("Profile contact information updated successfully!");
+      } else {
+        const d = await res.json();
+        setProfileMsg(d.error || "Failed to update profile.");
       }
     } catch (e) {
       setProfileMsg("Failed to update profile.");
     } finally {
       setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setAvatarMsg({ text: 'Please select a valid image file (JPG, PNG, WebP, or GIF).', isError: true });
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarMsg({ text: 'Image must be smaller than 2 MB.', isError: true });
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPreviewAvatar(reader.result as string);
+    reader.readAsDataURL(file);
+    setAvatarMsg(null);
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!previewAvatar) return;
+    setIsUploadingAvatar(true);
+    setAvatarMsg(null);
+    try {
+      const res = await fetch(`/api/members/${currentUser.id}/avatar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: previewAvatar, actorName: currentUser.name })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await refreshUserData();
+        setPreviewAvatar(null);
+        if (avatarInputRef.current) avatarInputRef.current.value = '';
+        setAvatarMsg({ text: 'Profile photo updated successfully!', isError: false });
+      } else {
+        setAvatarMsg({ text: data.error || 'Failed to update photo.', isError: true });
+      }
+    } catch (err: any) {
+      setAvatarMsg({ text: err.message || 'Network error.', isError: true });
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -442,29 +514,43 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {contributions.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/80 transition-all">
-                    <td className="p-3 font-mono font-bold text-blue-900">{c.receiptNo}</td>
-                    <td className="p-3 font-bold text-slate-800">{c.monthYear}</td>
-                    <td className="p-3 font-mono font-bold text-slate-900">₹{c.amount}</td>
-                    <td className="p-3 text-slate-600">{c.paymentMethod}</td>
-                    <td className="p-3 text-slate-500">{c.paymentDate}</td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 uppercase">
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => onOpenReceipt(c)}
-                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-[11px] inline-flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-blue-900" />
-                        View Receipt
-                      </button>
+                {contributions.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-10 text-center text-slate-400 text-xs">
+                      No contributions recorded yet. Use the &ldquo;Pay Subscription Online&rdquo; button to make your first payment.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  contributions.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-50/80 transition-all">
+                      <td className="p-3 font-mono font-bold text-blue-900">{c.receiptNo}</td>
+                      <td className="p-3 font-bold text-slate-800">{c.monthYear}</td>
+                      <td className="p-3 font-mono font-bold text-slate-900">₹{c.amount}</td>
+                      <td className="p-3 text-slate-600">{c.paymentMethod}</td>
+                      <td className="p-3 text-slate-500">{c.paymentDate}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                          c.status === 'SUCCESS' || (c.status as any) === 'PAID'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : c.status === 'PENDING'
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => onOpenReceipt(c)}
+                          className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-blue-900" />
+                          View Receipt
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -753,6 +839,98 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           <h2 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-3">
             High Court Service Profile & Contact Info
           </h2>
+
+          {/* ── PHOTO CHANGE SECTION ── */}
+          <div className="bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Camera className="w-4 h-4 text-blue-900" />
+              Change Profile Photo
+            </h3>
+
+            {avatarMsg && (
+              <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                avatarMsg.isError
+                  ? 'bg-rose-50 border border-rose-200 text-rose-800'
+                  : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+              }`}>
+                {avatarMsg.isError
+                  ? <AlertCircle className="w-4 h-4 shrink-0" />
+                  : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                {avatarMsg.text}
+              </div>
+            )}
+
+            <div className="flex items-start gap-5">
+              {/* Current / Preview Avatar */}
+              <div className="relative shrink-0">
+                <img
+                  src={previewAvatar || currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  className="w-24 h-28 rounded-xl object-cover border-2 border-blue-200 shadow-md"
+                />
+                {previewAvatar && (
+                  <span className="absolute -top-2 -right-2 bg-amber-400 text-slate-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase">Preview</span>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-3">
+                <p className="text-xs text-slate-600">
+                  Upload a clear, professional photo (JPG, PNG, or WebP). Maximum size: <strong>2 MB</strong>.
+                  This photo will appear on your Digital ID Card.
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  {/* Hidden file input */}
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    id="avatar-upload-input"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleAvatarFileChange}
+                  />
+                  <label
+                    htmlFor="avatar-upload-input"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-blue-50 text-blue-900 border border-blue-300 font-bold rounded-xl cursor-pointer shadow-sm transition-all text-xs"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Choose Photo
+                  </label>
+
+                  {previewAvatar && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleAvatarUpload}
+                        disabled={isUploadingAvatar}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900 hover:bg-blue-950 disabled:opacity-60 text-white font-bold rounded-xl cursor-pointer shadow-sm transition-all text-xs"
+                      >
+                        {isUploadingAvatar
+                          ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading...</>
+                          : <><CheckCircle2 className="w-3.5 h-3.5" /> Save Photo</>}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewAvatar(null);
+                          setAvatarMsg(null);
+                          if (avatarInputRef.current) avatarInputRef.current.value = '';
+                        }}
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl cursor-pointer transition-all text-xs"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Discard
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-slate-400">
+                  Current photo: <span className="font-mono text-slate-600 truncate max-w-xs inline-block align-bottom">{currentUser.avatarUrl?.startsWith('data:') ? '[Base64 Image]' : currentUser.avatarUrl}</span>
+                </p>
+              </div>
+            </div>
+          </div>
 
           {profileMsg && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold">

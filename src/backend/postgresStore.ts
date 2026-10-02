@@ -321,6 +321,8 @@ export class PostgresStore {
 
     let membershipId = await getNextMembershipId();
 
+    const status = data.status || 'PENDING';
+
     // Retry loop — handles race conditions and any leftover conflicts
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
@@ -333,7 +335,7 @@ export class PostgresStore {
             password, gender, cadre, user_id
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-            $14, $15, $16, $17, $18, $19, 'PENDING', $20, $21, $22, $23, $24, $25
+            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
           )
         `, [
           newId, data.email.trim().toLowerCase(), data.role || 'MEMBER', membershipId,
@@ -342,7 +344,7 @@ export class PostgresStore {
           data.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
           data.designation, data.department, postingLocation, dob, data.mobile,
           bloodGroup, address, dateOfJoining, employeeCategory,
-          membershipType, membershipDate, 500,
+          membershipType, membershipDate, 500, status,
           JSON.stringify(data.documents || []), data.emergencyContact || null,
           hashedPassword, gender, cadre, userId
         ]);
@@ -467,10 +469,11 @@ export class PostgresStore {
     ]);
 
     await this.addAuditLog(actorName, "PRESIDENT", "MEMBER_UPDATED_BY_ADMIN", `Admin edited details for ${name} (${member.membershipId})`);
-    
+
     const newPass = (updates as any).password;
     if (newPass && typeof newPass === 'string' && newPass.trim()) {
-      await query(`UPDATE members SET password = $1 WHERE id = $2`, [newPass.trim(), member.id]);
+      const hashed = newPass.startsWith('$2') ? newPass.trim() : await bcrypt.hash(newPass.trim(), BCRYPT_ROUNDS);
+      await query(`UPDATE members SET password = $1 WHERE id = $2`, [hashed, member.id]);
     }
 
     const updated = await this.getMemberById(member.id);
@@ -526,11 +529,18 @@ export class PostgresStore {
         if (!updates.currentPassword) {
           throw new Error("Current password is required to set a new password.");
         }
-        if (
-          updates.currentPassword !== curPass &&
-          updates.currentPassword !== 'OHCEA123' &&
-          updates.currentPassword !== 'password123'
-        ) {
+        const isHashed = curPass.startsWith('$2');
+        let isCurValid = false;
+        if (isHashed) {
+          isCurValid = await bcrypt.compare(updates.currentPassword, curPass);
+        } else {
+          isCurValid =
+            updates.currentPassword === curPass ||
+            updates.currentPassword === 'OHCEA123' ||
+            updates.currentPassword === 'password123' ||
+            updates.currentPassword === 'ohcea123';
+        }
+        if (!isCurValid) {
           throw new Error("Incorrect current password.");
         }
       }
@@ -557,7 +567,9 @@ export class PostgresStore {
 
     const finalEmail = updates.email && updates.email.trim() ? updates.email.trim() : current.email;
     const finalCode = updates.employeeCode && updates.employeeCode.trim() ? updates.employeeCode.trim().toUpperCase() : current.employee_code;
-    const finalPassword = updates.newPassword && updates.newPassword.trim() ? updates.newPassword.trim() : current.password;
+    const finalPassword = updates.newPassword && updates.newPassword.trim() 
+      ? await bcrypt.hash(updates.newPassword.trim(), BCRYPT_ROUNDS) 
+      : current.password;
 
     await query(`
       UPDATE members SET
@@ -782,6 +794,13 @@ export class PostgresStore {
     const id = `welf-${Date.now()}`;
     const today = new Date().toISOString().split('T')[0];
 
+    const type = data.type || (data as any).grantType || 'MEDICAL';
+    const amountRequested = Number(data.amountRequested) || 0;
+    const reason = data.reason || (data as any).institutionName || 'Welfare Assistance Request';
+    const description = data.description || (data as any).institutionName || reason || 'Application for welfare grant assistance';
+    const bankDetails = data.bankDetails || {};
+    const supportingDocs = data.supportingDocs || (data as any).documents || [];
+
     await query(`
       INSERT INTO welfare_applications (
         id, member_id, member_name, membership_number, type,
@@ -789,10 +808,10 @@ export class PostgresStore {
         supporting_docs, submitted_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SUBMITTED', $9, $10, $11, $11)
     `, [
-      id, member.id, member.name, member.membershipId, data.type,
-      data.amountRequested, data.reason, data.description,
-      JSON.stringify(data.bankDetails || {}),
-      JSON.stringify(data.supportingDocs || []),
+      id, member.id, member.name, member.membershipId, type,
+      amountRequested, reason, description,
+      JSON.stringify(bankDetails),
+      JSON.stringify(supportingDocs),
       today
     ]);
 
@@ -800,7 +819,7 @@ export class PostgresStore {
       member.name,
       "MEMBER",
       "WELFARE_SUBMITTED",
-      `Submitted ${data.type} welfare grant request for ₹${data.amountRequested}`
+      `Submitted ${type} welfare grant request for ₹${amountRequested}`
     );
 
     const rows = await query('SELECT * FROM welfare_applications WHERE id = $1', [id]);
@@ -838,6 +857,7 @@ export class PostgresStore {
     const approvedAmount = amountApproved !== undefined ? amountApproved : app.amount_approved;
     let disbursedDate = app.disbursed_date;
     let txnRef = disbursedTxnRef || app.disbursed_txn_ref;
+    const safeActorName = actorName || "Treasurer";
 
     if (status === 'DISBURSED') {
       disbursedDate = today;
@@ -850,7 +870,7 @@ export class PostgresStore {
         description: `Welfare Grant Disbursed to ${app.member_name} (${app.membership_number}) - ${app.type}`,
         amount: parseFloat(approvedAmount || app.amount_requested),
         referenceNo: txnRef,
-        createdBy: actorName
+        createdBy: safeActorName
       });
     }
 
@@ -935,15 +955,16 @@ export class PostgresStore {
     const id = `ft-${Date.now()}`;
     const txnId = `TXN-LEDGER-${Math.floor(1000 + Math.random() * 9000)}`;
     const date = new Date().toISOString().split('T')[0];
+    const createdBy = entry.createdBy || "Treasurer";
 
     await query(`
       INSERT INTO fund_transactions (
         id, date, transaction_id, type, category, description,
         amount, balance_after, reference_no, created_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    `, [id, date, txnId, entry.type, entry.category, entry.description, entry.amount, balanceAfter, entry.referenceNo, entry.createdBy]);
+    `, [id, date, txnId, entry.type, entry.category, entry.description, entry.amount, balanceAfter, entry.referenceNo, createdBy]);
 
-    await this.addAuditLog(entry.createdBy, "TREASURER", "FUND_TRANSACTION_ADDED", `${entry.type} entry of ₹${entry.amount}: ${entry.description}`);
+    await this.addAuditLog(createdBy, "TREASURER", "FUND_TRANSACTION_ADDED", `${entry.type} entry of ₹${entry.amount}: ${entry.description}`);
 
     return {
       id,
@@ -1020,21 +1041,30 @@ export class PostgresStore {
   async updateNotice(id: string, updates: Partial<Notice>, actorName: string = "Admin"): Promise<Notice | null> {
     const rows = await query('SELECT * FROM notices WHERE id = $1', [id]);
     if (rows.length === 0) return null;
-    
+
     const title = updates.title !== undefined ? updates.title : rows[0].title;
     const category = updates.category !== undefined ? updates.category : rows[0].category;
     const description = updates.description !== undefined ? updates.description : rows[0].description;
     const content = updates.content !== undefined ? updates.content : rows[0].content;
-    const attachmentUrl = updates.attachmentUrl !== undefined ? updates.attachmentUrl : rows[0].attachment_url;
+    let attachmentUrl = rows[0].attachment_url;
+    if (updates.attachmentUrl !== undefined) {
+      if (updates.attachmentUrl === 'true') {
+        attachmentUrl = rows[0].attachment_url; // preserve existing attachment
+      } else if (updates.attachmentUrl === '' || updates.attachmentUrl === null) {
+        attachmentUrl = null;
+      } else {
+        attachmentUrl = updates.attachmentUrl;
+      }
+    }
     const visibility = updates.visibility !== undefined ? updates.visibility : rows[0].visibility;
     const isImportant = updates.isImportant !== undefined ? updates.isImportant : rows[0].is_important;
-    
+
     await query(`
       UPDATE notices 
       SET title = $1, category = $2, description = $3, content = $4, attachment_url = $5, visibility = $6, is_important = $7
       WHERE id = $8
     `, [title, category, description, content, attachmentUrl, visibility, isImportant, id]);
-    
+
     await this.addAuditLog(actorName, "SECRETARY", "NOTICE_UPDATED", `Updated notice '${title}'`);
     return this.getNoticeById(id);
   }
@@ -1137,7 +1167,7 @@ export class PostgresStore {
     ]);
 
     await this.addAuditLog(actorName, "SECRETARY", "EVENT_UPDATED", `Updated event '${title}'`);
-    
+
     const rows = await query('SELECT * FROM events WHERE id = $1', [id]);
     const r = rows[0];
     return {
@@ -1308,7 +1338,7 @@ export class PostgresStore {
   async getGossipPosts(): Promise<any[]> {
     const postsRes = await query('SELECT * FROM gossip_posts ORDER BY created_at DESC');
     const commentsRes = await query('SELECT * FROM gossip_comments ORDER BY created_at ASC');
-    
+
     return postsRes.map((p: any) => {
       const comments = commentsRes
         .filter((c: any) => c.post_id === p.id)
@@ -1320,7 +1350,7 @@ export class PostgresStore {
           content: c.content,
           createdAt: c.created_at
         }));
-        
+
       return {
         id: p.id,
         authorId: p.author_id,
@@ -1337,8 +1367,12 @@ export class PostgresStore {
 
   async createGossipPost(authorId: string, authorName: string, content: string): Promise<any> {
     const member = await this.getMemberById(authorId);
-    if (!member) throw new Error("Member not found");
-    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+    if (!member) {
+      const admin = await query(`SELECT * FROM admin_accounts WHERE id = $1`, [authorId]);
+      if (admin.length === 0) {
+        throw new Error("Only approved active members can post to Mo Mana Katha.");
+      }
+    } else if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
       throw new Error("Only approved active members can post to Mo Mana Katha.");
     }
     const id = `gossip-${Date.now()}`;
@@ -1365,8 +1399,12 @@ export class PostgresStore {
 
   async addGossipComment(postId: string, authorId: string, authorName: string, content: string): Promise<any> {
     const member = await this.getMemberById(authorId);
-    if (!member) throw new Error("Register as Member to comment in this post");
-    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+    if (!member) {
+      const admin = await query(`SELECT * FROM admin_accounts WHERE id = $1`, [authorId]);
+      if (admin.length === 0) {
+        throw new Error("Register as Member to comment in this post");
+      }
+    } else if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
       throw new Error("Register as Member to comment in this post");
     }
     const id = `comment-${Date.now()}`;
@@ -1421,7 +1459,7 @@ export class PostgresStore {
       INSERT INTO grievances (id, member_id, member_name, subject, content, attachment_url)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [id, memberId, memberName, subject, content, attachmentUrl || null]);
-    
+
     return {
       id, memberId, memberName, subject, content, attachmentUrl, status: 'PENDING',
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()

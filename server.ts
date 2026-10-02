@@ -330,8 +330,9 @@ app.post("/api/auth/register", async (req, res) => {
 // --- PUBLIC VERIFICATION ---
 app.get("/api/verify/member/:membershipId", async (req, res) => {
   try {
-    const { membershipId } = req.params;
-    const verification = await postgresStore.verifyMemberPublic(membershipId);
+    const rawId = req.params.membershipId || '';
+    const cleanId = rawId.replace(/^member\//i, '').trim();
+    const verification = await postgresStore.verifyMemberPublic(cleanId);
     if (!verification) {
       return res.status(404).json({ error: "Member not found or invalid Membership ID." });
     }
@@ -446,6 +447,24 @@ app.patch("/api/members/:id/profile", async (req, res) => {
   }
 });
 
+// Dedicated avatar update endpoint — accepts base64 data URI or HTTPS URL
+app.patch("/api/members/:id/avatar", async (req, res) => {
+  try {
+    const { avatarUrl, actorName } = req.body;
+    if (!avatarUrl || typeof avatarUrl !== 'string') {
+      return res.status(400).json({ error: "avatarUrl is required" });
+    }
+    // Basic guard: only allow data URIs (base64 images) or https URLs
+    if (!avatarUrl.startsWith('data:image/') && !avatarUrl.startsWith('https://') && !avatarUrl.startsWith('http://')) {
+      return res.status(400).json({ error: "Invalid avatar URL format." });
+    }
+    const updated = await postgresStore.updateMemberProfile(req.params.id, { avatarUrl }, actorName || "Member");
+    res.json(updated);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Full Member update (used by Admin Dashboard and profile edit)
 app.patch("/api/members/:id", async (req, res) => {
   try {
@@ -550,7 +569,7 @@ app.patch("/api/welfare/:id/status", async (req, res) => {
   try {
     const { status, amountApproved, amountSanctioned, notes, disbursedTxnRef, actorName } = req.body;
     const updated = await postgresStore.updateWelfareStatus(
-      req.params.id, status, amountApproved ?? amountSanctioned, notes, disbursedTxnRef, actorName
+      req.params.id, status, amountApproved ?? amountSanctioned, notes, disbursedTxnRef, actorName || "Treasurer"
     );
     res.json(updated);
   } catch (err: any) {
@@ -562,7 +581,7 @@ app.patch("/api/welfare/:id", async (req, res) => {
   try {
     const { status, amountApproved, amountSanctioned, notes, disbursedTxnRef, actorName } = req.body;
     const updated = await postgresStore.updateWelfareStatus(
-      req.params.id, status, amountApproved ?? amountSanctioned, notes, disbursedTxnRef, actorName
+      req.params.id, status, amountApproved ?? amountSanctioned, notes, disbursedTxnRef, actorName || "Treasurer"
     );
     res.json(updated);
   } catch (err: any) {
