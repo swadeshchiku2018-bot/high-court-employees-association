@@ -531,7 +531,8 @@ app.post("/api/welfare/apply", async (req, res) => {
     const appRecord = await postgresStore.submitWelfareApplication(req.body);
     res.status(201).json(appRecord);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode = err.message?.includes("approved") ? 403 : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 });
 
@@ -540,7 +541,8 @@ app.post("/api/welfare", async (req, res) => {
     const appRecord = await postgresStore.submitWelfareApplication(req.body);
     res.status(201).json(appRecord);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode = err.message?.includes("approved") ? 403 : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 });
 
@@ -711,7 +713,8 @@ app.post("/api/events/:id/register", async (req, res) => {
     const reg = await postgresStore.registerForEvent(req.params.id, memberId);
     res.status(201).json(reg);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode = err.message?.includes("approved") ? 403 : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 });
 
@@ -780,7 +783,8 @@ app.post("/api/gossip", async (req, res) => {
     const post = await postgresStore.createGossipPost(authorId, authorName, content);
     res.status(201).json(post);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode = err.message?.includes("approved") ? 403 : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 });
 
@@ -809,7 +813,8 @@ app.post("/api/gossip/:id/comment", async (req, res) => {
     const comment = await postgresStore.addGossipComment(req.params.id, authorId, authorName, content);
     res.status(201).json(comment);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode = (err.message?.includes("Register as Member") || err.message?.includes("approved")) ? 403 : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 });
 
@@ -838,7 +843,8 @@ app.post("/api/grievances", async (req, res) => {
     const grievance = await postgresStore.submitGrievance(memberId, memberName, subject, content, attachmentUrl);
     res.status(201).json(grievance);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const statusCode = err.message?.includes("approved") ? 403 : 400;
+    res.status(statusCode).json({ error: err.message });
   }
 });
 

@@ -4,10 +4,11 @@ import { Shield, User, LogOut, Bell, LayoutDashboard, IdCard as IdCardIcon, Chev
 
 interface NavbarProps {
   activeTab?: string;
+  currentRoute?: string;
   onNavigate: (route: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab = 'home', onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab = 'home', currentRoute, onNavigate }) => {
   const { currentUser, logout, settings, notifications, switchUserRole } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);

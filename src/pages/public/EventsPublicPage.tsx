@@ -23,6 +23,11 @@ export const EventsPublicPage: React.FC<EventsPublicPageProps> = ({ onNavigate }
       return;
     }
 
+    if (currentUser.role === 'MEMBER' && currentUser.status !== 'ACTIVE') {
+      alert("Only approved active members can register for association events. Your membership application is currently pending Secretariat approval.");
+      return;
+    }
+
     try {
       const res = await fetch(`/api/events/${eventId}/register`, {
         method: 'POST',
@@ -36,6 +41,9 @@ export const EventsPublicPage: React.FC<EventsPublicPageProps> = ({ onNavigate }
         const updated = await (await fetch('/api/events')).json();
         setEvents(updated);
         alert("Event registration confirmed!");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to register for event");
       }
     } catch (e) {
       console.error(e);

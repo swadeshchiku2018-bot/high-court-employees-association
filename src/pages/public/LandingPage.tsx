@@ -8,6 +8,8 @@ interface LandingPageProps {
   onOpenNoticeModal?: (notice: Notice) => void;
 }
 
+const Marquee = 'marquee' as any;
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoticeModal }) => {
   const [settings, setSettings] = useState<AssociationSettings | null>(null);
   const [officeBearers, setOfficeBearers] = useState<OfficeBearer[]>([]);
@@ -108,7 +110,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                 <span className="sm:hidden tracking-wider">Alert</span>
               </div>
               <div className="flex-1 overflow-hidden relative flex items-center px-2">
-                <marquee className="text-sm font-bold tracking-wide py-2.5 flex items-center" scrollamount="6">
+                <Marquee className="text-sm font-bold tracking-wide py-2.5 flex items-center" scrollamount="6">
                   {notices.filter(n => n.isImportant).map((n, i) => (
                     <span key={n.id} className="mx-8">
                       <span className="text-amber-400 mr-2">[{n.date}]</span>
@@ -124,7 +126,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                       {i < notices.filter(x => x.isImportant).length - 1 && <span className="mx-8 text-white/30">•</span>}
                     </span>
                   ))}
-                </marquee>
+                </Marquee>
               </div>
             </div>
           </div>
@@ -411,7 +413,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                 </button>
               </div>
               <button
-                onClick={() => onNavigate('/dashboard')}
+                onClick={() => {
+                  const currentUserStr = localStorage.getItem('OHCEA_user');
+                  if (!currentUserStr) {
+                    alert("Register as Member to comment in this post");
+                    onNavigate('/register');
+                    return;
+                  }
+                  try {
+                    const currentUser = JSON.parse(currentUserStr);
+                    if (currentUser.role === 'MEMBER' && currentUser.status !== 'ACTIVE') {
+                      alert("Your membership application is currently pending Secretariat approval. Only approved members can post to Mo Mana Katha.");
+                      onNavigate('/member/dashboard');
+                      return;
+                    }
+                  } catch (e) {}
+                  onNavigate('/member/dashboard');
+                }}
                 className="text-xs font-bold text-purple-600 hover:underline cursor-pointer"
               >
                 Post
@@ -429,6 +447,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                 <GossipCard 
                   post={post}
                   onReact={async (postId, reaction) => {
+                    const currentUserStr = localStorage.getItem('OHCEA_user');
+                    if (!currentUserStr) {
+                      alert("Register as Member to comment in this post");
+                      return;
+                    }
+                    try {
+                      const currentUser = JSON.parse(currentUserStr);
+                      if (currentUser.role === 'MEMBER' && currentUser.status !== 'ACTIVE') {
+                        alert("Register as Member to comment in this post");
+                        return;
+                      }
+                    } catch (e) {}
                     await fetch(`/api/gossip/${postId}/react`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -439,13 +469,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onOpenNoti
                   }}
                   onComment={async (postId, content) => {
                     const currentUserStr = localStorage.getItem('OHCEA_user');
-                    if (!currentUserStr) return;
+                    if (!currentUserStr) {
+                      alert("Register as Member to comment in this post");
+                      return;
+                    }
+                    try {
+                      const currentUser = JSON.parse(currentUserStr);
+                      if (currentUser.role === 'MEMBER' && currentUser.status !== 'ACTIVE') {
+                        alert("Register as Member to comment in this post");
+                        return;
+                      }
+                    } catch (e) {}
                     const currentUser = JSON.parse(currentUserStr);
-                    await fetch(`/api/gossip/${postId}/comment`, {
+                    const postRes = await fetch(`/api/gossip/${postId}/comment`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ authorId: currentUser.id, authorName: currentUser.name, content })
                     });
+                    if (!postRes.ok) {
+                      const data = await postRes.json();
+                      alert(data.error || "Register as Member to comment in this post");
+                      return;
+                    }
                     const res = await fetch('/api/gossip');
                     if (res.ok) setGossipPosts(await res.json());
                   }}

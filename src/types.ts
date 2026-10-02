@@ -37,6 +37,8 @@ export interface Member {
   documents: DocumentAttachment[];
   emergencyContact?: string;
   password?: string;
+  username?: string;
+  isAdmin?: boolean;
 }
 
 export interface OfficeBearer {
@@ -57,6 +59,7 @@ export interface Contribution {
   memberId: string;
   memberName: string;
   membershipNumber: string;
+  membershipId?: string;
   receiptNo: string;
   amount: number;
   purpose: 'MONTHLY' | 'WELFARE' | 'GENERAL' | 'DONATION' | 'SPECIAL';
@@ -66,6 +69,8 @@ export interface Contribution {
   status: 'SUCCESS' | 'PENDING' | 'FAILED';
   date: string;
   financialYear: string;
+  monthYear?: string;
+  paymentDate?: string;
   remarks?: string;
 }
 
@@ -76,13 +81,17 @@ export interface WelfareApplication {
   memberId: string;
   memberName: string;
   membershipNumber: string;
+  membershipId?: string;
   type: 'MEDICAL' | 'EDUCATION' | 'EMERGENCY' | 'RETIREMENT' | 'DEPENDENT' | 'OTHER';
   grantType?: string;
   amountRequested: number;
   amountApproved?: number;
+  amountSanctioned?: number;
   reason: string;
   description: string;
-  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ADDITIONAL_INFO_REQUIRED' | 'APPROVED' | 'REJECTED' | 'DISBURSED';
+  institutionName?: string;
+  applicationDate?: string;
+  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'ADDITIONAL_INFO_REQUIRED' | 'APPROVED' | 'REJECTED' | 'DISBURSED' | 'PENDING';
   bankDetails: {
     accountName: string;
     accountNumber: string;
@@ -160,6 +169,8 @@ export interface AuditLog {
   id: string;
   userId: string;
   userName: string;
+  performedBy?: string;
+  targetId?: string;
   role: UserRole;
   action: string;
   details: string;
@@ -170,6 +181,7 @@ export interface AuditLog {
 export interface AssociationSettings {
   name: string;
   shortName: string;
+  associationName?: string;
   emblemUrl: string;
   tagline: string;
   heroTitle: string;
@@ -183,6 +195,7 @@ export interface AssociationSettings {
   vision: string;
   aboutText: string;
   welfareRules: string;
+  welfareCorpusBalance?: number;
   stats: {
     totalMembers: number;
     activeMembers: number;

@@ -5,7 +5,7 @@ const BCRYPT_ROUNDS = 12;
 import {
   Member, OfficeBearer, Contribution, WelfareApplication, FundTransaction,
   Notice, EventItem, EventRegistration, GalleryItem, AuditLog, AssociationSettings,
-  AppNotification
+  AppNotification, Grievance
 } from '../types';
 
 export class PostgresStore {
@@ -760,6 +760,10 @@ export class PostgresStore {
     }));
   }
 
+  async getWelfareGrants(memberId?: string): Promise<WelfareApplication[]> {
+    return this.getWelfareApplications(memberId);
+  }
+
   async submitWelfareApplication(data: {
     memberId: string;
     type: WelfareApplication['type'];
@@ -771,6 +775,9 @@ export class PostgresStore {
   }): Promise<WelfareApplication> {
     const member = await this.getMemberById(data.memberId);
     if (!member) throw new Error("Member not found");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Only approved active members can apply for welfare assistance.");
+    }
 
     const id = `welf-${Date.now()}`;
     const today = new Date().toISOString().split('T')[0];
@@ -905,6 +912,10 @@ export class PostgresStore {
       referenceNo: r.reference_no,
       createdBy: r.created_by
     }));
+  }
+
+  async getFundLedger(): Promise<FundTransaction[]> {
+    return this.getFundTransactions();
   }
 
   async addFundTransaction(entry: {
@@ -1162,6 +1173,9 @@ export class PostgresStore {
 
     const member = await this.getMemberById(memberId);
     if (!member) throw new Error("Member not found");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Only approved active members can register for association events.");
+    }
 
     const existingReg = await query('SELECT * FROM event_registrations WHERE event_id = $1 AND member_id = $2', [eventId, member.id]);
     if (existingReg.length > 0) throw new Error("Member is already registered for this event.");
@@ -1322,6 +1336,11 @@ export class PostgresStore {
   }
 
   async createGossipPost(authorId: string, authorName: string, content: string): Promise<any> {
+    const member = await this.getMemberById(authorId);
+    if (!member) throw new Error("Member not found");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Only approved active members can post to Mo Mana Katha.");
+    }
     const id = `gossip-${Date.now()}`;
     await query(`
       INSERT INTO gossip_posts (id, author_id, author_name, content)
@@ -1345,6 +1364,11 @@ export class PostgresStore {
   }
 
   async addGossipComment(postId: string, authorId: string, authorName: string, content: string): Promise<any> {
+    const member = await this.getMemberById(authorId);
+    if (!member) throw new Error("Register as Member to comment in this post");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Register as Member to comment in this post");
+    }
     const id = `comment-${Date.now()}`;
     await query(`
       INSERT INTO gossip_comments (id, post_id, author_id, author_name, content)
@@ -1387,6 +1411,11 @@ export class PostgresStore {
   }
 
   async submitGrievance(memberId: string, memberName: string, subject: string, content: string, attachmentUrl?: string): Promise<Grievance> {
+    const member = await this.getMemberById(memberId);
+    if (!member) throw new Error("Member not found");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Only approved active members can file grievances.");
+    }
     const id = `grv-${Date.now()}`;
     await query(`
       INSERT INTO grievances (id, member_id, member_name, subject, content, attachment_url)

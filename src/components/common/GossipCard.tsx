@@ -11,16 +11,16 @@ interface GossipCardProps {
 }
 
 export const GossipCard: React.FC<GossipCardProps> = ({ post, onReact, onComment, onDelete }) => {
-  const { currentUser, setShowAuthModal } = useAuth();
+  const { currentUser } = useAuth();
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
 
   const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'PRESIDENT' || currentUser?.role === 'SECRETARY';
+  const isApprovedMember = Boolean(currentUser && (currentUser.role !== 'MEMBER' || currentUser.status === 'ACTIVE'));
 
-  const handleAction = (action: () => void, requireLogin: boolean = false) => {
-    if (requireLogin && !currentUser) {
-      if (setShowAuthModal) setShowAuthModal(true);
-      else alert('Please login to perform this action.');
+  const handleAction = (action: () => void) => {
+    if (!isApprovedMember) {
+      alert("Register as Member to comment in this post");
       return;
     }
     action();
@@ -28,6 +28,10 @@ export const GossipCard: React.FC<GossipCardProps> = ({ post, onReact, onComment
 
   const submitComment = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isApprovedMember) {
+      alert("Register as Member to comment in this post");
+      return;
+    }
     if (!commentText.trim()) return;
     onComment(post.id, commentText);
     setCommentText('');
@@ -122,17 +126,22 @@ export const GossipCard: React.FC<GossipCardProps> = ({ post, onReact, onComment
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder={currentUser ? "Write a comment..." : "Login to comment..."}
-              disabled={!currentUser}
-              className="flex-1 bg-slate-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+              placeholder={isApprovedMember ? "Write a comment..." : "Register as Member to comment in this post"}
+              disabled={!isApprovedMember}
+              className={`flex-1 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none ${
+                isApprovedMember ? "bg-slate-100 text-slate-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+              }`}
             />
             <button 
               type="button"
               onClick={(e) => {
-                if(!currentUser) handleAction(() => {}, true);
-                else submitComment(e as any);
+                if (!isApprovedMember) {
+                  alert("Register as Member to comment in this post");
+                } else {
+                  submitComment(e as any);
+                }
               }}
-              className={`p-2 rounded-full flex items-center justify-center transition-colors ${commentText.trim() && currentUser ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400'}`}
+              className={`p-2 rounded-full flex items-center justify-center transition-colors ${commentText.trim() && isApprovedMember ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' : 'bg-slate-200 text-slate-400'}`}
             >
               <Send className="w-4 h-4" />
             </button>

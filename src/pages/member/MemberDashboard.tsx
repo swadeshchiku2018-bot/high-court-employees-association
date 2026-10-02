@@ -5,7 +5,6 @@ import { IdCard } from '../../components/common/IdCard';
 import {
   User, CreditCard, HeartHandshake, Bell, Shield, Download, Plus, CheckCircle2,
   Clock, AlertCircle, FileText, Phone, MapPin, Building, Sparkles, RefreshCw,
-  Clock, AlertCircle, FileText, Phone, MapPin, Building, Sparkles, RefreshCw,
   KeyRound, Lock, Eye, EyeOff, MessageSquare, Upload, ExternalLink
 } from 'lucide-react';
 import { GossipCard } from '../../components/common/GossipCard';
@@ -23,6 +22,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   initialTab = 'ID_CARD'
 }) => {
   const { currentUser, refreshUserData } = useAuth();
+  const isApproved = Boolean(currentUser && (currentUser.role !== 'MEMBER' || currentUser.status === 'ACTIVE'));
   const [activeTab, setActiveTab] = useState<'ID_CARD' | 'CONTRIBUTIONS' | 'WELFARE' | 'PROFILE' | 'SECURITY' | 'ALERTS' | 'GOSSIP' | 'GRIEVANCE'>(initialTab);
 
   // Local state for contributions & welfare applications
@@ -172,9 +172,13 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
   const handlePostGossip = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isApproved) {
+      alert("Only approved active members can post to Mo Mana Katha.");
+      return;
+    }
     if (!gossipContent.trim()) return;
     try {
-      await fetch('/api/gossip', {
+      const postRes = await fetch('/api/gossip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,6 +187,11 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           content: gossipContent
         })
       });
+      if (!postRes.ok) {
+        const errData = await postRes.json();
+        alert(errData.error || "Failed to post to community");
+        return;
+      }
       setGossipContent('');
       const res = await fetch('/api/gossip');
       if (res.ok) setGossipPosts(await res.json());
@@ -193,6 +202,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
   const handleWelfareSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isApproved) {
+      alert("Only approved active members can apply for welfare assistance grants.");
+      return;
+    }
     setIsSubmittingWelfare(true);
     try {
       const res = await fetch('/api/welfare', {
@@ -212,6 +225,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         setIsWelfareModalOpen(false);
         setWelfareForm({ grantType: 'MEDICAL', amountRequested: 25000, reason: '', institutionName: '' });
         alert("Welfare grant application submitted successfully! Reference logged.");
+      } else {
+        const errData = await res.json();
+        alert(errData.error || "Failed to submit welfare application");
       }
     } catch (e) {
       console.error(e);
@@ -244,6 +260,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   const handleSubmitGrievance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    if (!isApproved) {
+      alert("Only approved active members can file grievances.");
+      return;
+    }
     setIsSubmittingGrievance(true);
     try {
       const res = await fetch('/api/grievances', {
@@ -275,7 +295,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
     }
   };
 
-  const totalPaid = contributions.reduce((acc, c) => acc + (c.status === 'PAID' ? c.amount : 0), 0);
+  const totalPaid = contributions.reduce((acc, c) => acc + (c.status === 'SUCCESS' || (c.status as any) === 'PAID' ? c.amount : 0), 0);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 text-slate-800">
@@ -341,9 +361,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         {[
           { id: 'ID_CARD', label: 'Digital ID Card', icon: Shield },
           { id: 'CONTRIBUTIONS', label: 'Monthly Contributions', icon: CreditCard },
-          { id: 'WELFARE', label: 'Welfare Fund Grants', icon: HeartHandshake },
-          { id: 'GOSSIP', label: 'ମୋ ମନ କଥା 💭', icon: MessageSquare },
-          { id: 'GRIEVANCE', label: 'Grievance Redressal', icon: AlertCircle },
+          { id: 'WELFARE', label: 'Welfare Fund Grants', icon: HeartHandshake, restricted: !isApproved },
+          { id: 'GOSSIP', label: 'ମୋ ମନ କଥା 💭', icon: MessageSquare, restricted: !isApproved },
+          { id: 'GRIEVANCE', label: 'Grievance Redressal', icon: AlertCircle, restricted: !isApproved },
           { id: 'PROFILE', label: 'Service Profile', icon: User },
           { id: 'SECURITY', label: 'User ID & Password', icon: KeyRound },
           { id: 'ALERTS', label: 'Notifications Center', icon: Bell }
@@ -362,6 +382,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             >
               <Icon className={`w-4 h-4 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
+              {tab.restricted && (
+                <Lock className={`w-3 h-3 ${isActive ? 'text-amber-300' : 'text-amber-600'} opacity-90 shrink-0`} />
+              )}
             </button>
           );
         })}
@@ -456,14 +479,30 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
               <h2 className="text-lg font-bold text-slate-900">Welfare Fund Assistance Applications</h2>
               <p className="text-xs text-slate-500">Track status of medical grants, education awards, and bereavement aid.</p>
             </div>
-            <button
-              onClick={() => setIsWelfareModalOpen(true)}
-              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center gap-2"
-            >
-              <HeartHandshake className="w-4 h-4 text-amber-300" />
-              Apply for Welfare Grant
-            </button>
+            {!isApproved ? (
+              <span className="px-3 py-1.5 bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Approved Members Only</span>
+              </span>
+            ) : (
+              <button
+                onClick={() => setIsWelfareModalOpen(true)}
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center gap-2"
+              >
+                <HeartHandshake className="w-4 h-4 text-amber-300" />
+                Apply for Welfare Grant
+              </button>
+            )}
           </div>
+
+          {!isApproved && (
+            <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center gap-3 text-xs text-amber-900 shadow-sm">
+              <AlertCircle className="w-5 h-5 text-amber-700 shrink-0" />
+              <div>
+                <strong className="font-bold">Membership Verification Required:</strong> Applying for Association welfare grants (medical emergency, higher education, bereavement, calamity) is strictly reserved for verified and approved Association members. Once your application is approved by the Secretariat, this facility will be activated.
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {welfareGrants.length === 0 ? (
@@ -483,7 +522,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
                       wg.status === 'APPROVED' || wg.status === 'DISBURSED'
                         ? 'bg-emerald-100 text-emerald-800'
-                        : wg.status === 'PENDING'
+                        : wg.status === 'PENDING' || wg.status === 'SUBMITTED' || wg.status === 'UNDER_REVIEW'
                         ? 'bg-amber-100 text-amber-900'
                         : 'bg-rose-100 text-rose-800'
                     }`}>
@@ -498,16 +537,16 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                     </div>
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-bold">Sanctioned</p>
-                      <p className="font-mono font-bold text-emerald-800">₹{wg.amountSanctioned.toLocaleString()}</p>
+                      <p className="font-mono font-bold text-emerald-800">₹{(wg.amountApproved ?? wg.amountSanctioned ?? 0).toLocaleString()}</p>
                     </div>
                     <div className="col-span-2 pt-1 border-t border-slate-200">
                       <p className="text-[10px] text-slate-400 uppercase font-bold">Hospital / College</p>
-                      <p className="font-semibold text-slate-700">{wg.institutionName}</p>
+                      <p className="font-semibold text-slate-700">{wg.institutionName || wg.description || wg.reason}</p>
                     </div>
                   </div>
 
                   <div className="text-[11px] text-slate-500 flex justify-between items-center pt-1">
-                    <span>Filed: {wg.applicationDate}</span>
+                    <span>Filed: {wg.applicationDate || wg.submittedAt}</span>
                     <span className="font-mono font-bold text-blue-900">Ref: {wg.id}</span>
                   </div>
                 </div>
@@ -525,14 +564,30 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
               <h2 className="text-lg font-bold text-slate-900">Grievance Redressal</h2>
               <p className="text-xs text-slate-500">Submit your grievances, complaints, or suggestions directly to the Association.</p>
             </div>
-            <button
-              onClick={() => setIsGrievanceModalOpen(true)}
-              className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-amber-300" />
-              File a Grievance
-            </button>
+            {!isApproved ? (
+              <span className="px-3 py-1.5 bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Approved Members Only</span>
+              </span>
+            ) : (
+              <button
+                onClick={() => setIsGrievanceModalOpen(true)}
+                className="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4 text-amber-300" />
+                File a Grievance
+              </button>
+            )}
           </div>
+
+          {!isApproved && (
+            <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center gap-3 text-xs text-amber-900 shadow-sm">
+              <AlertCircle className="w-5 h-5 text-amber-700 shrink-0" />
+              <div>
+                <strong className="font-bold">Membership Verification Required:</strong> Grievance filing is restricted to verified and approved Association members only. Once your application is approved by the Secretariat/Admin, this facility will be activated.
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             {grievances.length === 0 ? (
@@ -604,23 +659,35 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             </h2>
             <p className="text-purple-200 text-sm italic mb-4">ମନରେ ଯାହା... କହିଦିଅ, ମନ ହାଲୁକା କର 😜</p>
             
-            <form onSubmit={handlePostGossip} className="bg-white/10 rounded-xl p-3 border border-white/20">
-              <textarea
-                value={gossipContent}
-                onChange={e => setGossipContent(e.target.value)}
-                placeholder="What's on your mind? Share with the community..."
-                className="w-full bg-transparent text-white placeholder-purple-200 border-none outline-none resize-none min-h-[80px] text-sm"
-              />
-              <div className="flex justify-end pt-2 border-t border-white/10 mt-2">
-                <button
-                  type="submit"
-                  disabled={!gossipContent.trim()}
-                  className="px-6 py-2 bg-purple-500 hover:bg-purple-400 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
-                >
-                  Post to Community
-                </button>
+            {!isApproved ? (
+              <div className="bg-white/10 border border-amber-300/40 rounded-xl p-4 flex items-center gap-3 text-amber-200">
+                <Lock className="w-6 h-6 text-amber-300 shrink-0" />
+                <div className="text-xs">
+                  <p className="font-bold text-white text-sm">Membership Approval Required</p>
+                  <p className="text-purple-200 mt-0.5">
+                    Posting to <strong>ମୋ ମନ କଥା</strong> is restricted to approved Association members. Your membership application is currently under Secretariat review.
+                  </p>
+                </div>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handlePostGossip} className="bg-white/10 rounded-xl p-3 border border-white/20">
+                <textarea
+                  value={gossipContent}
+                  onChange={e => setGossipContent(e.target.value)}
+                  placeholder="What's on your mind? Share with the community..."
+                  className="w-full bg-transparent text-white placeholder-purple-200 border-none outline-none resize-none min-h-[80px] text-sm"
+                />
+                <div className="flex justify-end pt-2 border-t border-white/10 mt-2">
+                  <button
+                    type="submit"
+                    disabled={!gossipContent.trim()}
+                    className="px-6 py-2 bg-purple-500 hover:bg-purple-400 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                  >
+                    Post to Community
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           <div className="max-w-2xl mx-auto space-y-4">
@@ -634,6 +701,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                   key={post.id}
                   post={post}
                   onReact={async (postId, reaction) => {
+                    if (!isApproved) {
+                      alert("Register as Member to comment in this post");
+                      return;
+                    }
                     await fetch(`/api/gossip/${postId}/react`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -643,11 +714,20 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                     if (res.ok) setGossipPosts(await res.json());
                   }}
                   onComment={async (postId, content) => {
-                    await fetch(`/api/gossip/${postId}/comment`, {
+                    if (!isApproved) {
+                      alert("Register as Member to comment in this post");
+                      return;
+                    }
+                    const postRes = await fetch(`/api/gossip/${postId}/comment`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ authorId: currentUser.id, authorName: currentUser.name, content })
                     });
+                    if (!postRes.ok) {
+                      const data = await postRes.json();
+                      alert(data.error || "Register as Member to comment in this post");
+                      return;
+                    }
                     const res = await fetch('/api/gossip');
                     if (res.ok) setGossipPosts(await res.json());
                   }}

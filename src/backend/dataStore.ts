@@ -281,6 +281,12 @@ class BackendStore {
   }
 
   submitWelfareApplication(appData: Omit<WelfareApplication, 'id' | 'status' | 'submittedAt' | 'updatedAt'>): WelfareApplication {
+    const member = this.getMemberById(appData.memberId);
+    if (!member) throw new Error("Member not found");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Only approved active members can apply for welfare assistance.");
+    }
+
     const newApp: WelfareApplication = {
       ...appData,
       id: `welf-${Date.now()}`,
@@ -390,6 +396,9 @@ class BackendStore {
     if (!event) throw new Error("Event not found");
     const member = this.getMemberById(memberId);
     if (!member) throw new Error("Member not found");
+    if (member.role === 'MEMBER' && member.status !== 'ACTIVE') {
+      throw new Error("Only approved active members can register for association events.");
+    }
 
     const existing = this.registrations.find(r => r.eventId === eventId && r.memberId === member.id);
     if (existing) return existing;
